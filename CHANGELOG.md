@@ -34,12 +34,16 @@ Community pull requests from [webosbrew/youtube-webos](https://github.com/webosb
 - Hide sign-in prompts in guest mode (upstream #359). On by default.
 - Option to hide the "Most relevant" row on the subscriptions page (upstream #376). English UI only.
 - Update notice: checks this fork's Homebrew Channel repository once a day and shows a notification when a newer version is available. Can be turned off.
-- Settings panel split into tabs (Content, Playback, SponsorBlock, Interface), with remote navigation that scrolls long sections.
+- Redesigned settings panel: tabs (Content, Playback, SponsorBlock, Interface), a one-line description under every option, on/off switches, and remote navigation that scrolls long sections. Kept light so it stays responsive on slow TVs.
+
+### Fixed (fork)
+
+- Settings panel: the remote stopped working in it when YouTube moved focus on its own (e.g. the home screen preview starting).
 
 ### Changed
 
 - [#489](https://github.com/webosbrew/youtube-webos/pull/489): Upgrade thumbnails in the data instead of the DOM (@aktiwers)
-- "Force VP09 video codec" (#467) is off by default in this fork, so AV1/codec selection is unchanged unless enabled.
+- "Prefer VP9 codec" (#467, originally "Force VP09 video codec") is off by default in this fork, so AV1/codec selection is unchanged unless enabled.
 
 ## [0.5.3] - 2026/04/18
 

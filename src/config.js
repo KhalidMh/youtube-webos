@@ -1,150 +1,216 @@
 const CONFIG_KEY = 'ytaf-configuration';
 
+/**
+ * Every option: its default, `desc` (the label in the settings panel) and
+ * `hint` (one short sentence shown under the label).
+ */
 const configOptions = new Map([
-  ['enableAdBlock', { default: true, desc: 'Enable ad blocking' }],
-  ['upgradeThumbnails', { default: false, desc: 'Upgrade thumbnail quality' }],
+  [
+    'enableAdBlock',
+    {
+      default: true,
+      desc: 'Block ads',
+      hint: 'Removes video ads and sponsored tiles from your feeds.'
+    }
+  ],
+  [
+    'upgradeThumbnails',
+    {
+      default: false,
+      desc: 'Sharper thumbnails',
+      hint: 'Loads higher resolution thumbnails. Uses a little more data.'
+    }
+  ],
   [
     'removeShorts',
-    { default: false, desc: 'Remove Shorts from subscriptions' }
+    {
+      default: false,
+      desc: 'Remove Shorts',
+      hint: 'Removes Shorts from your feeds and the Shorts entry from the side menu.'
+    }
   ],
-  ['enableSponsorBlock', { default: true, desc: 'Enable SponsorBlock' }],
+  [
+    'enableSponsorBlock',
+    {
+      default: true,
+      desc: 'Enable SponsorBlock',
+      hint: 'Skips the parts of videos that SponsorBlock users have marked.'
+    }
+  ],
   [
     'enableSponsorBlockSponsor',
-    { default: true, desc: 'Skip sponsor segments' }
+    {
+      default: true,
+      desc: 'Sponsors',
+      hint: 'Paid promotions and advertisements inside the video.'
+    }
   ],
-  ['enableSponsorBlockIntro', { default: true, desc: 'Skip intro segments' }],
-  ['enableSponsorBlockOutro', { default: true, desc: 'Skip outro segments' }],
+  [
+    'enableSponsorBlockIntro',
+    {
+      default: true,
+      desc: 'Intros',
+      hint: 'Intro animations and intermissions with no actual content.'
+    }
+  ],
+  [
+    'enableSponsorBlockOutro',
+    {
+      default: true,
+      desc: 'Outros',
+      hint: 'End cards and credits.'
+    }
+  ],
   [
     'enableSponsorBlockInteraction',
     {
       default: true,
-      desc: 'Skip interaction reminder segments'
+      desc: 'Interaction reminders',
+      hint: 'Reminders to like, subscribe or follow.'
     }
   ],
   [
     'enableSponsorBlockSelfPromo',
     {
       default: true,
-      desc: 'Skip self promotion segments'
+      desc: 'Self promotion',
+      hint: "Unpaid plugs for merch, donations or the creator's other channels."
     }
   ],
   [
     'enableSponsorBlockMusicOfftopic',
     {
       default: true,
-      desc: 'Skip non-music segments in music videos'
+      desc: 'Non-music in music videos',
+      hint: 'Talking and other non-music parts of music videos.'
     }
   ],
   [
     'enableSponsorBlockPreview',
     {
       default: false,
-      desc: 'Skip recaps and previews'
+      desc: 'Recaps and previews',
+      hint: 'Recaps of earlier episodes and previews of what is coming.'
     }
   ],
   [
     'hideLogo',
     {
       default: false,
-      desc: 'Hide YouTube logo'
+      desc: 'Hide YouTube logo',
+      hint: 'Removes the logo from the top-right corner.'
     }
   ],
   [
     'showWatch',
     {
       default: false,
-      desc: 'Display time in UI'
+      desc: 'Show clock',
+      hint: 'Shows the time in the top-right corner, except over a playing video.'
     }
   ],
   [
     'keepWatchPinned',
     {
       default: false,
-      desc: 'Keep Time Pinned'
+      desc: 'Always show clock',
+      hint: 'Keeps the clock on screen during playback too.'
     }
   ],
   [
     'forceHighResVideo',
     {
       default: false,
-      desc: 'Force max resolution video playback'
+      desc: 'Force max resolution',
+      hint: 'Always plays the highest quality available instead of letting YouTube choose.'
     }
   ],
   [
     'forceVp9Codec',
     {
       default: false,
-      desc: 'Force VP09 video codec'
+      desc: 'Prefer VP9 codec',
+      hint: 'Plays VP9 instead of AV1. Try it if videos stutter on your TV.'
     }
   ],
   [
     'removeEndscreen',
     {
       default: false,
-      desc: 'Remove end screens from video'
+      desc: 'Remove end screens',
+      hint: 'Hides the video suggestions shown over the last seconds of a video.'
     }
   ],
   [
     'disableYouThere',
     {
       default: true,
-      desc: 'Disable "Continue watching?" auto-pause'
+      desc: 'Disable "Continue watching?"',
+      hint: 'Stops YouTube from pausing to ask whether you are still watching.'
     }
   ],
   [
     'autoAccountSelect',
     {
       default: false,
-      desc: 'Bypass initial account selection on startup'
+      desc: 'Skip account selection',
+      hint: 'Goes straight to your account instead of the "Who\'s watching?" screen at startup.'
     }
   ],
   [
     'blockWebosCast',
     {
       default: true,
-      desc: 'Block webOS Cast service'
+      desc: 'Block webOS Cast service',
+      hint: "Stops LG's built-in Chromecast overlay from interfering. Casting from a phone still works."
     }
   ],
   [
     'forceEnglishSubtitles',
     {
       default: false,
-      desc: 'Add auto-translated English subtitles option'
+      desc: 'English subtitles for any video',
+      hint: 'Adds a machine-translated English track when captions exist only in another language.'
     }
   ],
   [
     'enableLiveCatchup',
     {
       default: false,
-      desc: 'Reduce live stream delay (skip to live edge)'
+      desc: 'Live catch-up',
+      hint: 'Skips ahead when a live stream falls behind, to stay close to real time.'
     }
   ],
   [
     'removeQrCodes',
     {
       default: true,
-      desc: 'Hide product QR codes during videos'
+      desc: 'Hide QR codes',
+      hint: 'Removes the shopping QR codes shown over some videos.'
     }
   ],
   [
     'hideSignInPrompts',
     {
       default: true,
-      desc: 'Hide sign-in prompts (guest mode)'
+      desc: 'Hide sign-in prompts',
+      hint: 'When watching as a guest, removes the "Sign in" banners and tiles.'
     }
   ],
   [
     'removeMostRelevant',
     {
       default: false,
-      desc: 'Hide "Most relevant" row in subscriptions (English UI)'
+      desc: 'Hide "Most relevant" row',
+      hint: 'Removes that row from the top of Subscriptions. English YouTube UI only.'
     }
   ],
   [
     'checkForUpdates',
     {
       default: true,
-      desc: 'Check for updates (once a day)'
+      desc: 'Check for updates',
+      hint: 'Once a day, checks Homebrew Channel for a new version of this app.'
     }
   ]
 ]);
@@ -200,6 +266,15 @@ export function configGetDesc(key) {
   }
 
   return configOptions.get(key).desc;
+}
+
+/** @returns {string} The one-sentence explanation shown under the label. */
+export function configGetHint(key) {
+  if (!configExists(key)) {
+    throw new Error('tried to get hint for unknown config key: ' + key);
+  }
+
+  return configOptions.get(key).hint ?? '';
 }
 
 export function configRead(key) {

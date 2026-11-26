@@ -1,69 +1,251 @@
+/*
+ * Settings panel. Targets go back to webOS 1 (Safari 7 WebKit): no CSS
+ * variables, flexbox `gap`, `inset` or `:focus-within` (the focused row gets
+ * `.ytaf-ui-option-focused` from ui.js instead). postcss-preset-env adds the
+ * vendor prefixes.
+ *
+ * TVs are slow, especially with a video playing behind the panel: no
+ * `backdrop-filter`, and nothing animates on moving between options (measured
+ * on a webOS TV: ~200 ms from key press to paint with them, ~30 ms without).
+ */
 .ytaf-ui-container {
   position: absolute;
-  top: 10%;
-  left: 10%;
-  right: 10%;
-  bottom: 10%;
-
-  background: rgba(18, 18, 18, 0.9);
-  backdrop-filter: blur(23px);
-  color: white;
-  border: 0.1rem solid rgb(52 52 52);
-  border-radius: 20px;
-  padding: 1em;
-  font-size: 1.4rem;
+  top: 7%;
+  bottom: 7%;
+  left: 17%;
+  right: 17%;
   z-index: 1000;
   box-sizing: border-box;
-  overflow-y: auto;
+
+  display: flex;
+  flex-direction: column;
+
+  padding: 1.6rem 1.8rem 1.1rem;
+  background: rgba(22, 22, 22, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1.5rem;
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.6);
+  color: #f1f1f1;
+  font-size: 1.2rem;
+  line-height: 1.3;
 }
 
 .ytaf-ui-container :focus {
-  outline: 4px red solid;
-  background-color: rgba(240, 248, 255, 0.511);
+  outline: none;
 }
 
-.ytaf-ui-container h1 {
-  margin: 0;
-  margin-bottom: 0.5em;
-  text-align: center;
-}
-
-.ytaf-ui-container input[type='checkbox'] {
-  width: 1.5rem;
-  height: 1.3rem;
-}
-
-.ytaf-ui-container label {
-  display: block;
-  font-size: 1.3rem;
-}
-
-/* Settings panel tabs. No flexbox `gap`: unsupported before Chrome 84. */
-.ytaf-ui-tabs {
+.ytaf-ui-header {
+  flex: none;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.1rem;
+}
+
+.ytaf-ui-header h1 {
+  margin: 0;
+  font-size: 1.7rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* A small red mark before the title, like YouTube's own logo. */
+.ytaf-ui-header h1::before {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+  height: 1.3rem;
+  margin-right: 0.7rem;
+  vertical-align: -0.12rem;
+  border-radius: 0.2rem;
+  background: #ff0033;
+}
+
+.ytaf-ui-version {
+  flex: none;
+  margin-left: 1rem;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #aaa;
+  font-size: 0.8rem;
+}
+
+.ytaf-ui-update-available {
+  color: #4caf50;
+}
+
+.ytaf-ui-tabs {
+  flex: none;
+  display: flex;
   flex-wrap: wrap;
-  margin-bottom: 0.75em;
+  margin-bottom: 0.9rem;
 }
 
 .ytaf-ui-tab {
-  font: inherit;
-  font-size: 1.1rem;
-  color: #ccc;
-  background: rgba(255, 255, 255, 0.08);
+  margin: 0 0.6rem 0.4rem 0;
+  padding: 0.45rem 1.2rem;
   border: 0;
   border-radius: 999px;
-  padding: 0.3em 1em;
-  margin: 0 0.3em 0.3em;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ccc;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 500;
 }
 
 .ytaf-ui-tab-active {
-  color: #111;
-  background: rgba(255, 255, 255, 0.85);
+  background: #f1f1f1;
+  color: #0f0f0f;
 }
 
-.ytaf-ui-section blockquote {
-  margin: 0.25em 0 0.5em 2em;
+.ytaf-ui-tab:focus {
+  box-shadow:
+    0 0 0 0.18rem #161616,
+    0 0 0 0.36rem #fff;
+}
+
+/*
+ * The only part that scrolls, by moving `.ytaf-ui-scroller` (see ui.js: YouTube
+ * resets native scrolling). `min-height: 0` lets it shrink in the column.
+ */
+.ytaf-ui-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+  margin-right: -0.6rem;
+  padding-right: 1rem;
+  /* Own compositing layer, so scrolling and focus changes repaint only it. */
+  transform: translateZ(0);
+}
+
+.ytaf-ui-scroller {
+  padding: 0.3rem 0;
+  will-change: transform;
+}
+
+.ytaf-ui-scrollbar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 0;
+  width: 0.3rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ytaf-ui-scrollbar-thumb {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.ytaf-ui-option {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.3rem;
+  padding: 0.75rem 1rem;
+  border-radius: 1rem;
+}
+
+.ytaf-ui-option-focused {
+  background: rgba(255, 255, 255, 0.13);
+  box-shadow: inset 0 0 0 0.15rem rgba(255, 255, 255, 0.9);
+}
+
+/* Focusable, but drawn by `.ytaf-ui-switch`. */
+.ytaf-ui-option-input {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ytaf-ui-option-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-right: 1.5rem;
+}
+
+.ytaf-ui-option-title {
+  display: block;
+  font-size: 1.15rem;
+  color: #f1f1f1;
+}
+
+.ytaf-ui-option-hint {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.9rem;
+  color: #b8b8b8;
+}
+
+.ytaf-ui-switch {
+  flex: none;
+  position: relative;
+  width: 3.2rem;
+  height: 1.8rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background-color 0.15s;
+}
+
+.ytaf-ui-switch::after {
+  content: '';
+  position: absolute;
+  top: 0.2rem;
+  left: 0.2rem;
+  width: 1.4rem;
+  height: 1.4rem;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0.1rem 0.3rem rgba(0, 0, 0, 0.4);
+  transition: transform 0.15s;
+}
+
+.ytaf-ui-option-input:checked ~ .ytaf-ui-switch {
+  background: #3ea6ff;
+}
+
+.ytaf-ui-option-input:checked ~ .ytaf-ui-switch::after {
+  transform: translateX(1.4rem);
+}
+
+/* Sub-options, e.g. the SponsorBlock categories. */
+.ytaf-ui-nested {
+  margin: 0.2rem 0 0.3rem 1.4rem;
+  padding-left: 0.8rem;
+  border-left: 0.15rem solid rgba(255, 255, 255, 0.12);
+  transition: opacity 0.15s;
+}
+
+.ytaf-ui-nested-off {
+  opacity: 0.45;
+}
+
+.ytaf-ui-note {
+  margin: 0.8rem 1rem 0.2rem;
+  font-size: 0.8rem;
+  color: #888;
+}
+
+.ytaf-ui-footer {
+  flex: none;
+  margin-top: 0.8rem;
+  padding-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  color: #888;
+  font-size: 0.8rem;
+  text-align: center;
+  white-space: pre;
 }
 
 .ytaf-notification-container {
@@ -130,22 +312,6 @@
 [idomkey='slider'],
 [idomkey='progress-bar'] {
   overflow: unset !important;
-}
-
-.ytaf-ui-sponsor {
-  font-size: 0.7rem;
-}
-
-.ytaf-ui-version {
-  font-size: 0.7rem;
-  color: #656565;
-  position: absolute;
-  right: 2rem;
-  bottom: 1rem;
-}
-
-.ytaf-ui-update-available {
-  color: #4caf50;
 }
 
 .ytaf-ui-watchControl-overlayMessage {

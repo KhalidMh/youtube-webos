@@ -5,6 +5,7 @@ import {
   configRead,
   configWrite,
   configGetDesc,
+  configGetHint,
   configKeys
 } from './config.js';
 import './ui.css';
@@ -40,9 +41,17 @@ function getKeyColor(evt) {
   );
 }
 
+/**
+ * One option row: label and hint on the left, a switch on the right.
+ *
+ * The checkbox stays the focusable element (the panel moves focus between
+ * inputs), visually hidden behind the drawn switch. Old webOS has no
+ * `:focus-within`, so the row gets a class while its checkbox has focus.
+ */
 function createConfigCheckbox(key) {
   const elmInput = document.createElement('input');
   elmInput.type = 'checkbox';
+  elmInput.className = 'ytaf-ui-option-input';
   elmInput.checked = configRead(key);
 
   /** @type {(evt: Event) => void} */
@@ -57,9 +66,37 @@ function createConfigCheckbox(key) {
   });
 
   const elmLabel = document.createElement('label');
+  elmLabel.className = 'ytaf-ui-option';
   elmLabel.appendChild(elmInput);
-  // Use non-breaking space (U+00A0)
-  elmLabel.appendChild(document.createTextNode('\u00A0' + configGetDesc(key)));
+
+  const elmText = document.createElement('span');
+  elmText.className = 'ytaf-ui-option-text';
+
+  const elmTitle = document.createElement('span');
+  elmTitle.className = 'ytaf-ui-option-title';
+  elmTitle.textContent = configGetDesc(key);
+  elmText.appendChild(elmTitle);
+
+  const hint = configGetHint(key);
+  if (hint) {
+    const elmHint = document.createElement('span');
+    elmHint.className = 'ytaf-ui-option-hint';
+    elmHint.textContent = hint;
+    elmText.appendChild(elmHint);
+  }
+
+  elmLabel.appendChild(elmText);
+
+  const elmSwitch = document.createElement('span');
+  elmSwitch.className = 'ytaf-ui-switch';
+  elmLabel.appendChild(elmSwitch);
+
+  elmInput.addEventListener('focus', () => {
+    elmLabel.classList.add('ytaf-ui-option-focused');
+  });
+  elmInput.addEventListener('blur', () => {
+    elmLabel.classList.remove('ytaf-ui-option-focused');
+  });
 
   return elmLabel;
 }
@@ -105,7 +142,7 @@ const PANEL_SECTIONS = [
       'enableSponsorBlockMusicOfftopic',
       'enableSponsorBlockPreview'
     ],
-    note: 'Sponsor segments skipping - https://sponsor.ajay.app'
+    note: 'Segments are submitted by the SponsorBlock community (sponsor.ajay.app).'
   },
   {
     title: 'Interface',
@@ -153,13 +190,107 @@ function createOptionsPanel() {
   elmContainer.style['display'] = 'none';
   elmContainer.setAttribute('tabindex', 0);
 
+  const elmHeader = document.createElement('div');
+  elmHeader.className = 'ytaf-ui-header';
+
   const elmHeading = document.createElement('h1');
   elmHeading.textContent = 'webOS YouTube Extended';
-  elmContainer.appendChild(elmHeading);
+  elmHeader.appendChild(elmHeading);
+
+  const elmVersion = document.createElement('div');
+  elmVersion.className = 'ytaf-ui-version';
+  elmVersion.textContent = `v${__YTAF_VERSION__}`;
+
+  const elmUpdateStatus = document.createElement('span');
+  elmUpdateStatus.className = 'ytaf-ui-update-status';
+  elmVersion.appendChild(elmUpdateStatus);
+  elmHeader.appendChild(elmVersion);
+
+  elmContainer.appendChild(elmHeader);
 
   const elmTabBar = document.createElement('div');
   elmTabBar.className = 'ytaf-ui-tabs';
   elmContainer.appendChild(elmTabBar);
+
+  /*
+   * Only the options scroll: the header, tabs and footer stay in place.
+   *
+   * Not with native scrolling: YouTube resets `scrollTop` to 0 on any element
+   * that scrolls (a capture `scroll` listener on the page). The options move
+   * with a `transform` instead, which fires no scroll events, and the panel
+   * draws its own scroll indicator.
+   */
+  const elmBody = document.createElement('div');
+  elmBody.className = 'ytaf-ui-body';
+  elmContainer.appendChild(elmBody);
+
+  const elmScroller = document.createElement('div');
+  elmScroller.className = 'ytaf-ui-scroller';
+  elmBody.appendChild(elmScroller);
+
+  const elmScrollbar = document.createElement('div');
+  elmScrollbar.className = 'ytaf-ui-scrollbar';
+  const elmScrollThumb = document.createElement('div');
+  elmScrollThumb.className = 'ytaf-ui-scrollbar-thumb';
+  elmScrollbar.appendChild(elmScrollThumb);
+  elmBody.appendChild(elmScrollbar);
+
+  let scrollOffset = 0;
+
+  /** @param {number} offset Pixels scrolled from the top. */
+  function scrollOptionsTo(offset) {
+    const viewHeight = elmBody.clientHeight;
+    const contentHeight = elmScroller.offsetHeight;
+    const maxOffset = Math.max(0, contentHeight - viewHeight);
+    scrollOffset = Math.min(Math.max(0, offset), maxOffset);
+
+    const transform = `translateY(${-scrollOffset}px)`;
+    elmScroller.style.transform = transform;
+    elmScroller.style.webkitTransform = transform;
+
+    if (maxOffset === 0) {
+      elmScrollbar.style.display = 'none';
+      return;
+    }
+    elmScrollbar.style.display = '';
+    const thumbHeight = Math.max(24, (viewHeight * viewHeight) / contentHeight);
+    const thumbTop = (scrollOffset / maxOffset) * (viewHeight - thumbHeight);
+    elmScrollThumb.style.height = `${thumbHeight}px`;
+    elmScrollThumb.style.top = `${thumbTop}px`;
+  }
+
+  // Keep the focused row inside the visible area, with a little room around
+  // it. The row's position is measured against the scroller, not the screen:
+  // both move together, so a slide still in progress does not skew it.
+  elmBody.addEventListener(
+    'focus',
+    (evt) => {
+      const row = /** @type {HTMLElement} */ (evt.target).parentElement;
+      if (!row) return;
+      const margin = 16;
+      const scrollerTop = elmScroller.getBoundingClientRect().top;
+      const rowRect = row.getBoundingClientRect();
+      const rowTop = rowRect.top - scrollerTop;
+      const rowBottom = rowRect.bottom - scrollerTop;
+      const viewHeight = elmBody.clientHeight;
+
+      const controls = sectionControls();
+      if (evt.target === controls[controls.length - 1]) {
+        // Last option: show the end of the section too (e.g. its note).
+        scrollOptionsTo(Infinity);
+      } else if (rowBottom + margin > scrollOffset + viewHeight) {
+        scrollOptionsTo(rowBottom + margin - viewHeight);
+      } else if (rowTop - margin < scrollOffset) {
+        scrollOptionsTo(rowTop - margin);
+      }
+    },
+    true
+  );
+
+  const elmFooter = document.createElement('div');
+  elmFooter.className = 'ytaf-ui-footer';
+  elmFooter.textContent = '◀ ▶ Tabs    ▲ ▼ Options    OK Toggle    BACK Close';
+  elmContainer.appendChild(elmFooter);
 
   /** @type {HTMLButtonElement[]} */
   const tabButtons = [];
@@ -175,7 +306,7 @@ function createOptionsPanel() {
     sectionElements.forEach((section, i) => {
       section.style.display = i === index ? 'block' : 'none';
     });
-    elmContainer.scrollTop = 0;
+    scrollOptionsTo(0);
   }
 
   function focusActiveTab() {
@@ -206,21 +337,35 @@ function createOptionsPanel() {
     }
 
     if (section.nested.length > 0) {
-      const elmBlock = document.createElement('blockquote');
+      const elmNested = document.createElement('div');
+      elmNested.className = 'ytaf-ui-nested';
       for (const key of section.nested) {
-        elmBlock.appendChild(createConfigCheckbox(key));
+        elmNested.appendChild(createConfigCheckbox(key));
       }
-      elmSection.appendChild(elmBlock);
+      elmSection.appendChild(elmNested);
+
+      // The nested options only matter while the section's main option is on.
+      const parentKey = section.keys[0];
+      if (parentKey) {
+        const updateNested = () => {
+          elmNested.classList.toggle(
+            'ytaf-ui-nested-off',
+            !configRead(parentKey)
+          );
+        };
+        updateNested();
+        configAddChangeListener(parentKey, updateNested);
+      }
     }
 
     if (section.note) {
-      const elmNote = document.createElement('small');
-      elmNote.className = 'ytaf-ui-sponsor';
+      const elmNote = document.createElement('div');
+      elmNote.className = 'ytaf-ui-note';
       elmNote.textContent = section.note;
       elmSection.appendChild(elmNote);
     }
 
-    elmContainer.appendChild(elmSection);
+    elmScroller.appendChild(elmSection);
     sectionElements.push(elmSection);
   });
 
@@ -299,16 +444,6 @@ function createOptionsPanel() {
     true
   );
 
-  const elmVersion = document.createElement('div');
-  elmVersion.className = 'ytaf-ui-version';
-  elmVersion.textContent = `v${__YTAF_VERSION__}`;
-
-  const elmUpdateStatus = document.createElement('span');
-  elmUpdateStatus.className = 'ytaf-ui-update-status';
-  elmVersion.appendChild(elmUpdateStatus);
-
-  elmContainer.appendChild(elmVersion);
-
   return { elmContainer, focusActiveTab, elmUpdateStatus };
 }
 
@@ -340,7 +475,8 @@ function showOptionsPanel(visible) {
 
   if (visible && !optionsPanelVisible) {
     console.debug('Showing and focusing options panel!');
-    optionsPanel.style.display = 'block';
+    // Back to the stylesheet's `display: flex` (the panel is a flex column).
+    optionsPanel.style.display = '';
     focusActiveTab();
     optionsPanelVisible = true;
   } else if (!visible && optionsPanelVisible) {
@@ -352,6 +488,36 @@ function showOptionsPanel(visible) {
 }
 
 window.ytaf_showOptionsPanel = showOptionsPanel;
+
+/**
+ * YouTube moves focus on its own while the panel is open: the home screen
+ * preview starting, a page finishing loading. Focus then sat on a tile behind
+ * the panel and the remote stopped working in it. Send focus back to the
+ * control that last had it.
+ */
+/** @type {HTMLElement | null} */
+let lastPanelFocus = null;
+
+document.addEventListener(
+  'focusin',
+  (evt) => {
+    if (!optionsPanelVisible) return;
+
+    const target = /** @type {Node | null} */ (evt.target);
+    if (target && optionsPanel.contains(target)) {
+      lastPanelFocus = /** @type {HTMLElement} */ (target);
+      return;
+    }
+
+    console.debug('[ui] focus left the settings panel, taking it back');
+    if (lastPanelFocus && optionsPanel.contains(lastPanelFocus)) {
+      lastPanelFocus.focus();
+    } else {
+      focusActiveTab();
+    }
+  },
+  true
+);
 
 const eventHandler = (evt) => {
   console.debug(
