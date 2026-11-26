@@ -131,6 +131,7 @@ function createOptionsPanel() {
   elmContainer.appendChild(createConfigCheckbox('disableYouThere'));
   elmContainer.appendChild(createConfigCheckbox('autoAccountSelect'));
   elmContainer.appendChild(createConfigCheckbox('blockWebosCast'));
+  elmContainer.appendChild(createConfigCheckbox('forceEnglishSubtitles'));
   elmContainer.appendChild(createConfigCheckbox('enableSponsorBlock'));
 
   const elmBlock = document.createElement('blockquote');

@@ -97,6 +97,13 @@ const configOptions = new Map([
       default: true,
       desc: 'Block webOS Cast service'
     }
+  ],
+  [
+    'forceEnglishSubtitles',
+    {
+      default: false,
+      desc: 'Add auto-translated English subtitles option'
+    }
   ]
 ]);
 
