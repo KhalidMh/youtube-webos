@@ -127,6 +127,7 @@ function createOptionsPanel() {
   elmContainer.appendChild(createConfigCheckbox('keepWatchPinned'));
   elmContainer.appendChild(createConfigCheckbox('removeShorts'));
   elmContainer.appendChild(createConfigCheckbox('forceHighResVideo'));
+  elmContainer.appendChild(createConfigCheckbox('forceVp9Codec'));
   elmContainer.appendChild(createConfigCheckbox('removeEndscreen'));
   elmContainer.appendChild(createConfigCheckbox('disableYouThere'));
   elmContainer.appendChild(createConfigCheckbox('autoAccountSelect'));
