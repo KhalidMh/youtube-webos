@@ -108,17 +108,58 @@ interface CustomEventTarget<T extends EmptyEventMap> {
 /**
  * `new EventTarget()` throws "Illegal constructor" before Chromium 64
  * (webOS 3.x/4.x), so listeners live on a `DocumentFragment` instead.
- * `event.currentTarget` and a listener's `this` are that fragment.
+ *
+ * Listener functions are wrapped so that their `this` is this object, as with
+ * a real `EventTarget`: handlers such as `video-quality.ts` read `this.player`.
+ * `event.currentTarget` is still the fragment.
  */
+type ListenerFunction = (evt: Event) => void;
+
 class FragmentEventTarget implements EventTarget {
   private readonly target = document.createDocumentFragment();
+
+  /** Wrapper per listener function, per `type` and capture flag. */
+  private readonly wrappers = new WeakMap<
+    ListenerFunction,
+    Map<string, ListenerFunction>
+  >();
+
+  private wrapperFor(
+    type: string,
+    callback: ListenerFunction,
+    options: boolean | EventListenerOptions | undefined,
+    create: boolean
+  ) {
+    const capture =
+      typeof options === 'boolean' ? options : Boolean(options?.capture);
+    const key = `${capture}:${type}`;
+
+    let byKey = this.wrappers.get(callback);
+    if (!byKey) {
+      if (!create) return undefined;
+      byKey = new Map();
+      this.wrappers.set(callback, byKey);
+    }
+
+    let wrapper = byKey.get(key);
+    if (!wrapper && create) {
+      wrapper = (evt: Event) => callback.call(this, evt);
+      byKey.set(key, wrapper);
+    }
+    return wrapper;
+  }
 
   addEventListener(
     type: string,
     callback: EventListenerOrEventListenerObject | null,
     options?: boolean | AddEventListenerOptions
   ): void {
-    this.target.addEventListener(type, callback, options);
+    // An object's `handleEvent` is already called with the object as `this`.
+    const listener =
+      typeof callback === 'function'
+        ? this.wrapperFor(type, callback, options, true)
+        : callback;
+    this.target.addEventListener(type, listener ?? null, options);
   }
 
   removeEventListener(
@@ -126,7 +167,11 @@ class FragmentEventTarget implements EventTarget {
     callback: EventListenerOrEventListenerObject | null,
     options?: boolean | EventListenerOptions
   ): void {
-    this.target.removeEventListener(type, callback, options);
+    const listener =
+      typeof callback === 'function'
+        ? this.wrapperFor(type, callback, options, false)
+        : callback;
+    if (listener) this.target.removeEventListener(type, listener, options);
   }
 
   dispatchEvent(event: Event): boolean {
