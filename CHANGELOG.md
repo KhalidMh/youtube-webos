@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
+## [Unreleased] - fork
+
+Community pull requests from [webosbrew/youtube-webos](https://github.com/webosbrew/youtube-webos) that were not merged upstream.
+
+### Fixed
+
+- [#499](https://github.com/webosbrew/youtube-webos/pull/499): Fix `stringify` hook throwing on non-cloneable values, which left videos stuck loading (@shricharan-ks)
+- [#507](https://github.com/webosbrew/youtube-webos/pull/507): Fix `EventTarget` construction on webOS 3.x/4.x (@Bouliw)
+- [#495](https://github.com/webosbrew/youtube-webos/pull/495): Fix LG remote color buttons and duplicate settings toggles (@shricharan-ks)
+- [#493](https://github.com/webosbrew/youtube-webos/pull/493): Restore playback position after forcing max quality (@Bouliw)
+- [#487](https://github.com/webosbrew/youtube-webos/pull/487): Wait for network before loading YouTube (@wapenshaw)
+- [#482](https://github.com/webosbrew/youtube-webos/pull/482): Fix casting from phone to TV (#401) while still blocking the webOS Cast service (new option) (@trigrab)
+- [#488](https://github.com/webosbrew/youtube-webos/pull/488): Also filter the home screen YouTube loads before the userScript (@aktiwers)
+- [#491](https://github.com/webosbrew/youtube-webos/pull/491): Validate HTTPS origin for direct content targets (@Pochonski)
+
+### Added
+
+- [#490](https://github.com/webosbrew/youtube-webos/pull/490): Also remove the Shorts entry from the side menu (@aktiwers)
+- [#504](https://github.com/webosbrew/youtube-webos/pull/504): Add option to disable "Continue watching?" auto-pause (@hodlroad)
+- [#481](https://github.com/webosbrew/youtube-webos/pull/481): Add option to pin the watch (@DavidVodus)
+- [#472](https://github.com/webosbrew/youtube-webos/pull/472): Add auto-translated English subtitles option (@DavidVodus)
+- [#467](https://github.com/webosbrew/youtube-webos/pull/467): Add option to force VP09 video codec (@RF1705)
+- [#463](https://github.com/webosbrew/youtube-webos/pull/463): Add automatic live stream catch-up (@aedalzotto)
+
+### Changed
+
+- [#489](https://github.com/webosbrew/youtube-webos/pull/489): Upgrade thumbnails in the data instead of the DOM (@aktiwers)
+- "Force VP09 video codec" (#467) is off by default in this fork, so AV1/codec selection is unchanged unless enabled.
+
 ## [0.5.3] - 2026/04/18
 
 ### Fixed
