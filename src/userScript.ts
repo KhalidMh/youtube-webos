@@ -33,3 +33,4 @@ import './disable-you-there';
 import './hooks';
 import './block-webos-cast';
 import './auto-account-select';
+import './live-catchup';
