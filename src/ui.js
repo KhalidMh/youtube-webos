@@ -127,6 +127,7 @@ function createOptionsPanel() {
   elmContainer.appendChild(createConfigCheckbox('removeShorts'));
   elmContainer.appendChild(createConfigCheckbox('forceHighResVideo'));
   elmContainer.appendChild(createConfigCheckbox('removeEndscreen'));
+  elmContainer.appendChild(createConfigCheckbox('disableYouThere'));
   elmContainer.appendChild(createConfigCheckbox('autoAccountSelect'));
   elmContainer.appendChild(createConfigCheckbox('blockWebosCast'));
   elmContainer.appendChild(createConfigCheckbox('enableSponsorBlock'));
