@@ -37,6 +37,23 @@ export function removeShortsFrom(r) {
   if (sectionListRenderer?.contents) {
     removeShelvesWithShorts(sectionListRenderer);
   }
+
+  // Shorts entry in the side menu: the menu opens a page as soon as an entry
+  // is focused, so just moving past it loaded and buffered a Short every time
+  if (Array.isArray(r?.items)) {
+    removeShortsGuideEntry(r.items);
+  }
+}
+
+function removeShortsGuideEntry(sections) {
+  sections.forEach((section) => {
+    const guideSection = section?.guideSectionRenderer;
+    if (!Array.isArray(guideSection?.items)) return;
+    guideSection.items = guideSection.items.filter(
+      (elm) =>
+        elm?.guideEntryRenderer?.navigationEndpoint?.reelWatchEndpoint == null
+    );
+  });
 }
 
 function removeShorts(container) {
