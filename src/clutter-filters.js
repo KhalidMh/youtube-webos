@@ -6,9 +6,11 @@
  *   and next responses.
  * - Sign-in prompts shown to guests (#359): feed nudges, alerts and the
  *   "Sign in for better recommendations" tile, in home, search, browse and
- *   watch-next lists. They are dropped from the data rather than hidden with
- *   CSS: a hidden element keeps its place in YouTube's focus model, which
- *   broke remote navigation past it.
+ *   watch-next lists. Only content feeds are filtered (see FEED_LISTS), so
+ *   the sign-in screen and the side menu's sign-in entry are never touched.
+ *   They are dropped from the data rather than hidden with CSS: a hidden
+ *   element keeps its place in YouTube's focus model, which broke remote
+ *   navigation past it.
  * - The "Most relevant" shelf on the subscriptions page (#376). It is matched
  *   by its title, so this only works with the English UI.
  *
@@ -83,29 +85,50 @@ function shouldDrop(item, options) {
 }
 
 /**
- * Walks `node`, removing the matching items from every array it holds.
+ * The content feeds items are removed from, as `<renderer>.<list key>`: page
+ * sections, the items of a shelf or grid, and their continuations. Lists
+ * anywhere else (sign-in and account screens, settings, menus) are left
+ * alone, so a prompt-like component reused there is never removed.
+ */
+const FEED_LISTS = new Set([
+  'sectionListRenderer.contents',
+  'sectionListContinuation.contents',
+  'horizontalListRenderer.items',
+  'gridRenderer.items',
+  'expandedShelfContentsRenderer.items',
+  'gridContinuation.items',
+  'horizontalListContinuation.items',
+  'appendContinuationItemsAction.continuationItems',
+  'reloadContinuationItemsCommand.continuationItems'
+]);
+
+/**
+ * Walks `node`, removing the matching items from the content feeds it holds.
  * A shelf this emptied goes too: left in place, the app renders its header and
  * placeholder tiles, waiting for content that is gone.
  * @param {unknown} node
  * @param {ClutterOptions} options
  * @param {number} depth
+ * @param {string} key The key `node` sits under in its parent.
+ * @param {string} parentKey The key the parent sits under in its own parent.
  * @returns {number} How many items were removed.
  */
-function filterTree(node, options, depth) {
+function filterTree(node, options, depth, key, parentKey) {
   if (node === null || typeof node !== 'object' || depth > MAX_DEPTH) return 0;
 
   let removed = 0;
 
   if (Array.isArray(node)) {
+    const isFeed = FEED_LISTS.has(`${parentKey}.${key}`);
     let writeIdx = 0;
     for (let i = 0; i < node.length; i++) {
       const item = node[i];
-      let keep = !shouldDrop(item, options);
+      let keep = !(isFeed && shouldDrop(item, options));
 
       if (keep) {
         const shelf = /** @type {any} */ (item)?.shelfRenderer;
         const before = shelf ? countShelfItems(shelf) : 0;
-        const removedInside = filterTree(item, options, depth + 1);
+        const removedInside = filterTree(item, options, depth + 1, '', key);
         removed += removedInside;
         if (shelf && removedInside > 0 && before > 0) {
           keep = countShelfItems(shelf) > 0;
@@ -123,8 +146,8 @@ function filterTree(node, options, depth) {
   }
 
   const obj = /** @type {Record<string, unknown>} */ (node);
-  for (const key in obj) {
-    removed += filterTree(obj[key], options, depth + 1);
+  for (const childKey in obj) {
+    removed += filterTree(obj[childKey], options, depth + 1, childKey, key);
   }
   return removed;
 }
@@ -159,7 +182,7 @@ export function removeClutter(response, options) {
     (options.hideSignInPrompts || options.removeMostRelevant) &&
     !('streamingData' in response)
   ) {
-    result.items = filterTree(response, options, 0);
+    result.items = filterTree(response, options, 0, '', '');
   }
 
   return result;

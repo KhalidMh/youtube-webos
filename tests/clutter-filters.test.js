@@ -290,3 +290,65 @@ test('survives a cyclic value', () => {
   response.self = response;
   assert.doesNotThrow(() => removeClutter(response, ALL));
 });
+
+test('sign-in prompts are only removed from content feeds', () => {
+  // The same components outside a feed (e.g. a sign-in or account screen)
+  // must survive, so signing in keeps working.
+  const response = {
+    responseContext: {},
+    contents: {
+      signInScreen: {
+        alerts: [{ alertWithActionsRenderer: { title: 'Sign in' } }],
+        nudges: [{ feedNudgeRenderer: {} }],
+        buttons: [
+          {
+            gridButtonRenderer: {
+              title: { runs: [{ text: 'Sign in for better recommendations' }] }
+            }
+          }
+        ]
+      }
+    }
+  };
+  const before = structuredClone(response);
+  assert.equal(removeClutter(response, ALL).items, 0);
+  assert.deepEqual(response, before);
+});
+
+test('keeps the sign-in entry of the side menu', () => {
+  const response = {
+    responseContext: {},
+    items: [
+      {
+        guideSectionRenderer: {
+          items: [
+            { guideEntryRenderer: { title: { simpleText: 'Sign in' } } },
+            { guideEntryRenderer: { title: { simpleText: 'Home' } } }
+          ]
+        }
+      }
+    ]
+  };
+  const before = structuredClone(response);
+  removeClutter(response, ALL);
+  assert.deepEqual(response, before);
+});
+
+test('removes prompts from continuation item actions', () => {
+  const response = {
+    responseContext: {},
+    onResponseReceivedActions: [
+      {
+        appendContinuationItemsAction: {
+          continuationItems: [{ feedNudgeRenderer: {} }, tile('a')]
+        }
+      }
+    ]
+  };
+  removeClutter(response, ALL);
+  assert.deepEqual(
+    response.onResponseReceivedActions[0].appendContinuationItemsAction
+      .continuationItems,
+    [tile('a')]
+  );
+});
