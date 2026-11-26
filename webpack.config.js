@@ -102,10 +102,14 @@ const makeConfig = (_env, argv) => [
       // webpack transforms it to async modules.
       // This plugin calls babel again to transform remove the `async` keyword usage after the fact.
       new TransformAsyncModulesPlugin({
-        runtime: {
+        // `moduleName` is passed through to @babel/plugin-transform-runtime but
+        // missing from the plugin's types. Without it the helpers resolve as
+        // `@babel/runtime`, which pnpm does not expose from this directory.
+        runtime: /** @type {{ version: string, absoluteRuntime: string }} */ ({
           version: pkgJson.dependencies['@babel/runtime-corejs3'],
+          moduleName: '@babel/runtime-corejs3',
           absoluteRuntime: './node_modules/@babel/runtime-corejs3'
-        }
+        })
       }),
       new webpack.DefinePlugin({
         __YTAF_VERSION__: JSON.stringify(pkgJson.version),
