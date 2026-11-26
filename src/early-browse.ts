@@ -14,12 +14,14 @@
 
 import { removeAds } from './adblock.js';
 import { removeShortsFrom } from './shorts.js';
+import { removeClutter } from './remove-clutter';
 
 window.pendingEarlyBrowse?.then(
   (early) => {
     if (!early?.response) return;
     removeAds(early.response);
     removeShortsFrom(early.response);
+    removeClutter(early.response);
     console.info('[early-browse] Filtered the early home screen');
   },
   // The page handles its own failure

@@ -4,6 +4,7 @@ import TerserPlugin from 'terser-webpack-plugin';
 import pkgJson from './package.json' with { type: 'json' };
 import webpack from 'webpack';
 import { basename } from 'node:path';
+import repoInfo from './tools/repo-info.cjs';
 
 /**
  * @param input {Buffer<ArrayBufferLike>}
@@ -107,7 +108,8 @@ const makeConfig = (_env, argv) => [
         }
       }),
       new webpack.DefinePlugin({
-        __YTAF_VERSION__: JSON.stringify(pkgJson.version)
+        __YTAF_VERSION__: JSON.stringify(pkgJson.version),
+        __YTAF_UPDATE_URL__: JSON.stringify(repoInfo.homebrewRepoUrl)
       })
     ]
   }

@@ -16,7 +16,7 @@ pnpm build            # production webpack build -> dist/
 pnpm build:dev        # development build (inline source maps)
 pnpm lint:all         # eslint + tsc -b + prettier --check (all must pass)
 pnpm test:compat      # es-check: dist/**/*.js must be ES5 — run after build
-pnpm test:launch      # node --test tests/launch.test.js
+pnpm test            # every tests/**/*.test.js (node:test)
 node --test --test-name-pattern "voice intent" tests/launch.test.js   # single test
 
 pnpm package          # dist/ -> youtube.leanback.v4_<version>_all.ipk
@@ -26,7 +26,7 @@ pnpm inspect          # ares-inspect: prints a DevTools URL for the app's consol
 pnpm exec ares-setup-device   # add/select a TV (interactive)
 ```
 
-A husky pre-commit hook runs lint-staged (prettier, eslint, `tsc -b`). There is no unit-test suite beyond `tests/launch.test.js`; verification is lint + build + `test:compat`, then testing on a real TV.
+A husky pre-commit hook runs lint-staged (prettier, eslint, `tsc -b`). Tests import plain-JS modules from `src/` directly with Node, so logic worth testing is kept in browser-free `.js` modules (e.g. `clutter-filters.js`, `version-compare.js`) with a thin hooking module around them. Beyond that, verification is lint + build + `test:compat`, then testing on a real TV.
 
 ## Architecture
 
@@ -45,9 +45,11 @@ A husky pre-commit hook runs lint-staged (prettier, eslint, `tsc -b`). There is 
 - `JSON.stringify` hook (`hooks/json-stringify.ts`) edits outgoing player requests. Objects may be frozen — copy, don't mutate, and never use `structuredClone` (it throws on values JSON accepts).
 - `FetchRegistry` (`hooks/fetch.ts`): singleton wrapping `window.fetch`; modules listen for `request`/`response` events and can `preventDefault()` a request (e.g. `block-webos-cast.ts`).
 - Player API (`player_api/`): `await getPlayerManager()` gives a `PlayerManager` that emits `newVideo` and `playbackStart`; `player` is YouTube's internal player element (typed in `yt-api.ts`, undocumented). Check `playerMode === PlayerMode.PREVIEW` to skip home-screen previews.
+- `remove-clutter.ts` + `clutter-filters.js`: generic walk of InnerTube responses dropping guest sign-in prompts and the "Most relevant" shelf, and the player's QR-code overlay (`timelyActionRenderers`). `early-browse.ts` applies the same filters (ads, Shorts, clutter) to the home screen YouTube fetches before the userScript is injected — new response filters should be added there too.
+- `update-check.ts`: once a day fetches the fork's Homebrew repository (`__YTAF_UPDATE_URL__`, set at build time from `package.json` `repository` via `tools/repo-info.cjs`) and notifies when a newer version exists.
 - `CustomEventTarget` (`custom-event-target.ts`) is the typed event base class; it is backed by a `DocumentFragment` because `new EventTarget()` throws on old webOS.
 
-**Config / settings UI**: options are declared in the `configOptions` Map in `src/config.js` (`default`, `desc`) and persisted in `localStorage`. Read with `configRead(key)`, react with `configAddChangeListener(key, cb)`. To show an option in the settings panel (GREEN remote button), also add `createConfigCheckbox('<key>')` in `createOptionsPanel()` in `src/ui.js`. Unknown keys throw. `showNotification()` from `ui.js` shows toasts. BLUE toggles audio-only mode.
+**Config / settings UI**: options are declared in the `configOptions` Map in `src/config.js` (`default`, `desc`) and persisted in `localStorage`. Read with `configRead(key)`, react with `configAddChangeListener(key, cb)`. The settings panel (GREEN remote button) is tabbed: place a new option in a section of `PANEL_SECTIONS` in `src/ui.js` (options left out land in an "Other" tab). The panel handles arrow keys itself (tab bar, then up/down through the open section's options) instead of relying on the spatial-navigation polyfill, which skips options scrolled out of view. Unknown keys throw. `showNotification()` from `ui.js` shows toasts. BLUE toggles audio-only mode.
 
 ## Compatibility constraints
 

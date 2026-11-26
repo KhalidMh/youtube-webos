@@ -1,10 +1,11 @@
-/*global navigate, __YTAF_VERSION__*/
+/*global __YTAF_VERSION__*/
 import './spatial-navigation-polyfill.js';
 import {
   configAddChangeListener,
   configRead,
   configWrite,
-  configGetDesc
+  configGetDesc,
+  configKeys
 } from './config.js';
 import './ui.css';
 import { requireElement } from './player_api/helpers';
@@ -63,6 +64,88 @@ function createConfigCheckbox(key) {
   return elmLabel;
 }
 
+/**
+ * The settings panel layout: one tab per section. A config option missing
+ * from here still shows up, in an "Other" tab, so a new option is never
+ * silently left out of the panel.
+ * @type {{ title: string, keys: string[], nested?: string[], note?: string }[]}
+ */
+const PANEL_SECTIONS = [
+  {
+    title: 'Content',
+    keys: [
+      'enableAdBlock',
+      'removeQrCodes',
+      'hideSignInPrompts',
+      'removeShorts',
+      'removeMostRelevant',
+      'removeEndscreen',
+      'upgradeThumbnails'
+    ]
+  },
+  {
+    title: 'Playback',
+    keys: [
+      'forceHighResVideo',
+      'forceVp9Codec',
+      'disableYouThere',
+      'enableLiveCatchup',
+      'forceEnglishSubtitles'
+    ]
+  },
+  {
+    title: 'SponsorBlock',
+    keys: ['enableSponsorBlock'],
+    nested: [
+      'enableSponsorBlockSponsor',
+      'enableSponsorBlockIntro',
+      'enableSponsorBlockOutro',
+      'enableSponsorBlockInteraction',
+      'enableSponsorBlockSelfPromo',
+      'enableSponsorBlockMusicOfftopic',
+      'enableSponsorBlockPreview'
+    ],
+    note: 'Sponsor segments skipping - https://sponsor.ajay.app'
+  },
+  {
+    title: 'Interface',
+    keys: [
+      'hideLogo',
+      'showWatch',
+      'keepWatchPinned',
+      'autoAccountSelect',
+      'blockWebosCast',
+      'checkForUpdates'
+    ]
+  }
+];
+
+/** The layout above, minus unknown keys, plus an "Other" tab for unlisted ones. */
+function resolvePanelSections() {
+  const known = new Set(configKeys());
+  const listed = new Set();
+  const keep = (key) => {
+    if (!known.has(key)) {
+      console.warn('Settings panel: unknown config key', key);
+      return false;
+    }
+    listed.add(key);
+    return true;
+  };
+
+  const sections = PANEL_SECTIONS.map((section) => ({
+    ...section,
+    keys: section.keys.filter(keep),
+    nested: (section.nested ?? []).filter(keep)
+  }));
+
+  const unlisted = configKeys().filter((key) => !listed.has(key));
+  if (unlisted.length > 0) {
+    sections.push({ title: 'Other', keys: unlisted, nested: [] });
+  }
+  return sections;
+}
+
 function createOptionsPanel() {
   const elmContainer = document.createElement('div');
 
@@ -70,16 +153,116 @@ function createOptionsPanel() {
   elmContainer.style['display'] = 'none';
   elmContainer.setAttribute('tabindex', 0);
 
-  elmContainer.addEventListener(
-    'focus',
-    () => console.debug('Options panel focused!'),
-    true
-  );
-  elmContainer.addEventListener(
-    'blur',
-    () => console.debug('Options panel blurred!'),
-    true
-  );
+  const elmHeading = document.createElement('h1');
+  elmHeading.textContent = 'webOS YouTube Extended';
+  elmContainer.appendChild(elmHeading);
+
+  const elmTabBar = document.createElement('div');
+  elmTabBar.className = 'ytaf-ui-tabs';
+  elmContainer.appendChild(elmTabBar);
+
+  /** @type {HTMLButtonElement[]} */
+  const tabButtons = [];
+  /** @type {HTMLElement[]} */
+  const sectionElements = [];
+  let activeTab = 0;
+
+  function selectTab(index) {
+    activeTab = index;
+    tabButtons.forEach((tab, i) => {
+      tab.classList.toggle('ytaf-ui-tab-active', i === index);
+    });
+    sectionElements.forEach((section, i) => {
+      section.style.display = i === index ? 'block' : 'none';
+    });
+    elmContainer.scrollTop = 0;
+  }
+
+  function focusActiveTab() {
+    tabButtons[activeTab]?.focus();
+  }
+
+  /** The focusable controls of the visible section, in document order. */
+  function sectionControls() {
+    return Array.from(
+      sectionElements[activeTab]?.querySelectorAll('input') ?? []
+    );
+  }
+
+  resolvePanelSections().forEach((section, index) => {
+    const elmTab = document.createElement('button');
+    elmTab.className = 'ytaf-ui-tab';
+    elmTab.textContent = section.title;
+    // Moving onto a tab opens it, like YouTube's own side menu.
+    elmTab.addEventListener('focus', () => selectTab(index));
+    elmTab.addEventListener('click', () => selectTab(index));
+    elmTabBar.appendChild(elmTab);
+    tabButtons.push(elmTab);
+
+    const elmSection = document.createElement('div');
+    elmSection.className = 'ytaf-ui-section';
+    for (const key of section.keys) {
+      elmSection.appendChild(createConfigCheckbox(key));
+    }
+
+    if (section.nested.length > 0) {
+      const elmBlock = document.createElement('blockquote');
+      for (const key of section.nested) {
+        elmBlock.appendChild(createConfigCheckbox(key));
+      }
+      elmSection.appendChild(elmBlock);
+    }
+
+    if (section.note) {
+      const elmNote = document.createElement('small');
+      elmNote.className = 'ytaf-ui-sponsor';
+      elmNote.textContent = section.note;
+      elmSection.appendChild(elmNote);
+    }
+
+    elmContainer.appendChild(elmSection);
+    sectionElements.push(elmSection);
+  });
+
+  selectTab(0);
+
+  /**
+   * Arrow keys, handled here rather than by spatial navigation:
+   * - Tab bar: left/right move between tabs, down enters the open section.
+   * - Section: up/down move through its options in order; up from the first
+   *   goes back to its own tab. Spatial navigation would pick whichever tab is
+   *   nearest on screen (switching sections), and skips options scrolled out
+   *   of view, so a long section could not be scrolled with the remote.
+   */
+  function handleArrow(direction) {
+    const active = document.activeElement;
+    const tabIndex = tabButtons.indexOf(active);
+
+    if (tabIndex !== -1) {
+      if (direction === 'left' || direction === 'right') {
+        const step = direction === 'right' ? 1 : -1;
+        const count = tabButtons.length;
+        tabButtons[(tabIndex + step + count) % count].focus();
+      } else if (direction === 'down') {
+        sectionControls()[0]?.focus();
+      }
+      return;
+    }
+
+    const controls = sectionControls();
+    const index = controls.indexOf(active);
+
+    if (index === -1) {
+      // The panel itself, or something outside the open section.
+      focusActiveTab();
+    } else if (direction === 'up') {
+      if (index === 0) focusActiveTab();
+      else controls[index - 1].focus();
+    } else if (direction === 'down') {
+      controls[index + 1]?.focus();
+    }
+    // Left/right inside a section: nothing to move to.
+  }
 
   elmContainer.addEventListener(
     'keydown',
@@ -91,7 +274,7 @@ function createOptionsPanel() {
       }
 
       if (evt.keyCode in ARROW_KEY_CODE) {
-        navigate(ARROW_KEY_CODE[evt.keyCode]);
+        handleArrow(ARROW_KEY_CODE[evt.keyCode]);
       } else if (evt.keyCode === 13) {
         // "OK" button
 
@@ -116,55 +299,35 @@ function createOptionsPanel() {
     true
   );
 
-  const elmHeading = document.createElement('h1');
-  elmHeading.textContent = 'webOS YouTube Extended';
-  elmContainer.appendChild(elmHeading);
+  const elmVersion = document.createElement('div');
+  elmVersion.className = 'ytaf-ui-version';
+  elmVersion.textContent = `v${__YTAF_VERSION__}`;
 
-  elmContainer.appendChild(createConfigCheckbox('enableAdBlock'));
-  elmContainer.appendChild(createConfigCheckbox('upgradeThumbnails'));
-  elmContainer.appendChild(createConfigCheckbox('hideLogo'));
-  elmContainer.appendChild(createConfigCheckbox('showWatch'));
-  elmContainer.appendChild(createConfigCheckbox('keepWatchPinned'));
-  elmContainer.appendChild(createConfigCheckbox('removeShorts'));
-  elmContainer.appendChild(createConfigCheckbox('forceHighResVideo'));
-  elmContainer.appendChild(createConfigCheckbox('forceVp9Codec'));
-  elmContainer.appendChild(createConfigCheckbox('removeEndscreen'));
-  elmContainer.appendChild(createConfigCheckbox('disableYouThere'));
-  elmContainer.appendChild(createConfigCheckbox('autoAccountSelect'));
-  elmContainer.appendChild(createConfigCheckbox('blockWebosCast'));
-  elmContainer.appendChild(createConfigCheckbox('forceEnglishSubtitles'));
-  elmContainer.appendChild(createConfigCheckbox('enableLiveCatchup'));
-  elmContainer.appendChild(createConfigCheckbox('enableSponsorBlock'));
+  const elmUpdateStatus = document.createElement('span');
+  elmUpdateStatus.className = 'ytaf-ui-update-status';
+  elmVersion.appendChild(elmUpdateStatus);
 
-  const elmBlock = document.createElement('blockquote');
+  elmContainer.appendChild(elmVersion);
 
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockSponsor'));
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockIntro'));
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockOutro'));
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockInteraction'));
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockSelfPromo'));
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockMusicOfftopic'));
-  elmBlock.appendChild(createConfigCheckbox('enableSponsorBlockPreview'));
-
-  elmContainer.appendChild(elmBlock);
-
-  const elmSponsorLink = document.createElement('small');
-  elmSponsorLink.className = 'ytaf-ui-sponsor';
-  elmSponsorLink.textContent =
-    'Sponsor segments skipping - https://sponsor.ajay.app';
-  elmContainer.appendChild(elmSponsorLink);
-
-  const version = document.createElement('div');
-  version.className = 'ytaf-ui-version';
-  version.textContent = `v${__YTAF_VERSION__}`;
-
-  elmContainer.appendChild(version);
-
-  return elmContainer;
+  return { elmContainer, focusActiveTab, elmUpdateStatus };
 }
 
-const optionsPanel = createOptionsPanel();
+const {
+  elmContainer: optionsPanel,
+  focusActiveTab,
+  elmUpdateStatus
+} = createOptionsPanel();
 document.body.appendChild(optionsPanel);
+
+/**
+ * Shows the update check's result next to the version in the settings panel.
+ * @param {string} text Empty to clear.
+ * @param {boolean} highlight Whether an update is available.
+ */
+export function setUpdateStatus(text, highlight) {
+  elmUpdateStatus.textContent = text ? ` · ${text}` : '';
+  elmUpdateStatus.classList.toggle('ytaf-ui-update-available', highlight);
+}
 
 let optionsPanelVisible = false;
 
@@ -178,7 +341,7 @@ function showOptionsPanel(visible) {
   if (visible && !optionsPanelVisible) {
     console.debug('Showing and focusing options panel!');
     optionsPanel.style.display = 'block';
-    optionsPanel.focus();
+    focusActiveTab();
     optionsPanelVisible = true;
   } else if (!visible && optionsPanelVisible) {
     console.debug('Hiding options panel!');

@@ -118,6 +118,34 @@ const configOptions = new Map([
       default: false,
       desc: 'Reduce live stream delay (skip to live edge)'
     }
+  ],
+  [
+    'removeQrCodes',
+    {
+      default: true,
+      desc: 'Hide product QR codes during videos'
+    }
+  ],
+  [
+    'hideSignInPrompts',
+    {
+      default: true,
+      desc: 'Hide sign-in prompts (guest mode)'
+    }
+  ],
+  [
+    'removeMostRelevant',
+    {
+      default: false,
+      desc: 'Hide "Most relevant" row in subscriptions (English UI)'
+    }
+  ],
+  [
+    'checkForUpdates',
+    {
+      default: true,
+      desc: 'Check for updates (once a day)'
+    }
   ]
 ]);
 
@@ -159,6 +187,11 @@ let localConfig = loadStoredConfig() ?? Object.create(defaultConfig);
 
 function configExists(key) {
   return configOptions.has(key);
+}
+
+/** @returns {string[]} Every config key, in declaration order. */
+export function configKeys() {
+  return Array.from(configOptions.keys());
 }
 
 export function configGetDesc(key) {

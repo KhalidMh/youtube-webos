@@ -1,6 +1,11 @@
 export type webOSLaunchParams = Record<string, unknown>;
 
 declare global {
+  /** Version from package.json, set at build time */
+  const __YTAF_VERSION__: string;
+  /** The fork's Homebrew Channel repository (`apps.json`), set at build time */
+  const __YTAF_UPDATE_URL__: string;
+
   interface Window {
     launchParams?: webOSLaunchParams;
     __ytaf_debug__?: boolean;

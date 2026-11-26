@@ -28,6 +28,14 @@ Community pull requests from [webosbrew/youtube-webos](https://github.com/webosb
 - [#467](https://github.com/webosbrew/youtube-webos/pull/467): Add option to force VP09 video codec (@RF1705)
 - [#463](https://github.com/webosbrew/youtube-webos/pull/463): Add automatic live stream catch-up (@aedalzotto)
 
+### Added (fork)
+
+- Hide product/merch QR codes shown during videos (upstream #385). On by default. Filters based on [NicholasBly/youtube-webos](https://github.com/NicholasBly/youtube-webos).
+- Hide sign-in prompts in guest mode (upstream #359). On by default.
+- Option to hide the "Most relevant" row on the subscriptions page (upstream #376). English UI only.
+- Update notice: checks this fork's Homebrew Channel repository once a day and shows a notification when a newer version is available. Can be turned off.
+- Settings panel split into tabs (Content, Playback, SponsorBlock, Interface), with remote navigation that scrolls long sections.
+
 ### Changed
 
 - [#489](https://github.com/webosbrew/youtube-webos/pull/489): Upgrade thumbnails in the data instead of the DOM (@aktiwers)
