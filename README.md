@@ -2,10 +2,13 @@
   YouTube Ad-Free
 </h1>
 <p align="center">
+  Community-maintained fork of <a href="https://github.com/webosbrew/youtube-webos">webosbrew/youtube-webos</a> that merges community fixes. See the <a href="CHANGELOG.md">changelog</a>.
+</p>
+<p align="center">
   <img src="https://img.shields.io/github/stars/webosbrew/youtube-webos?style=flat-square&logo=github" alt="GitHub Stars">
-  <img src="https://img.shields.io/github/v/release/webosbrew/youtube-webos?style=flat-square" alt="Latest Release">
+  <img src="https://img.shields.io/github/v/release/KhalidMh/youtube-webos?style=flat-square" alt="Latest Release">
   <img src="https://img.shields.io/github/contributors/webosbrew/youtube-webos?style=flat-square" alt="Contributors">
-  <img src="https://img.shields.io/github/downloads/webosbrew/youtube-webos/total?style=flat-square" alt="Total Downloads">
+  <img src="https://img.shields.io/github/downloads/KhalidMh/youtube-webos/total?style=flat-square" alt="Total Downloads">
   <img src="https://img.shields.io/badge/LG-webOS-000000?logo=webos&logoColor=white&style=flat-square" alt="webOS">
 </p>
 
@@ -50,9 +53,11 @@
 You can install the app using one of the following methods:
 
 - **[webOS Homebrew Channel](https://github.com/webosbrew/webos-homebrew-channel):**
-  App is available in the official webOS Brew repository.
+  This fork has its own repository. In Homebrew Channel, open **Settings → Add repository** and enter
+  `https://khalidmh.github.io/youtube-webos/apps.json`, then install **YouTube AdFree (community fork)**.
+  (The "YouTube AdFree" entry in the official repository is the upstream app; installing it replaces this one.)
 - **[Device Manager](https://github.com/webosbrew/dev-manager-desktop):**
-  Use a pre-built `.ipk` file from the [Releases](https://github.com/webosbrew/youtube-webos/releases) page.
+  Use a pre-built `.ipk` file from the [Releases](https://github.com/KhalidMh/youtube-webos/releases) page.
 - **Command Line (webOS CLI):** Configure the tools [below](#development-setup)
 
 ---
@@ -88,7 +93,7 @@ luna-send-pub -n 1 'luna://com.webos.service.eim/deleteDevice' '{"appId":"youtub
 1. Clone the repository.
 
    ```sh
-   git clone https://github.com/webosbrew/youtube-webos.git
+   git clone https://github.com/KhalidMh/youtube-webos.git
    cd youtube-webos
    ```
 

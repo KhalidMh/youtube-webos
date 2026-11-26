@@ -3,6 +3,8 @@
 const crypto = require('crypto');
 const fs = require('fs');
 
+const { repoSlug } = require('./repo-info.cjs');
+
 const outfile = process.argv[2];
 if (!outfile) throw new Error('Usage: gen-manifest <outfile>');
 
@@ -22,9 +24,8 @@ fs.writeFileSync(
     type: appinfo.type,
     title: appinfo.title,
     // appDescription: appinfo.appDescription,
-    iconUri:
-      'https://raw.githubusercontent.com/webosbrew/youtube-webos/main/assets/largeIcon.png',
-    sourceUrl: 'https://github.com/webosbrew/youtube-webos',
+    iconUri: `https://raw.githubusercontent.com/${repoSlug}/main/assets/largeIcon.png`,
+    sourceUrl: `https://github.com/${repoSlug}`,
     rootRequired: false,
     ipkUrl: ipkfile,
     ipkHash: {

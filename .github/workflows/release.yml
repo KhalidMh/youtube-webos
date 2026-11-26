@@ -20,12 +20,13 @@ jobs:
       - run: pnpm run build
       - run: pnpm run package
       - run: pnpm run manifest
+      - run: pnpm run repo
 
       - name: Create release
         uses: ncipollo/release-action@v1
         with:
-          name: 'Release ${{ github.ref }}'
-          prerelease: true
+          name: 'Release ${{ github.ref_name }}'
+          prerelease: false
           draft: false
           allowUpdates: true
           omitNameDuringUpdate: true
@@ -33,3 +34,22 @@ jobs:
           omitDraftDuringUpdate: true
           omitPrereleaseDuringUpdate: true
           artifacts: '*.ipk,*.manifest.json'
+
+      # Homebrew Channel repository: https://<owner>.github.io/<repo>/apps.json
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: repo
+
+  deploy-repo:
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

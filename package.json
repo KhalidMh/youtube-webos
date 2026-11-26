@@ -1,6 +1,6 @@
 {
   "name": "youtube-webos",
-  "version": "0.5.3",
+  "version": "0.6.0",
   "description": "Ad-free YouTube app for webOS",
   "type": "module",
   "main": "index.js",
@@ -12,6 +12,7 @@
     "inspect": "ares-inspect youtube.leanback.v4",
     "launch": "ares-launch youtube.leanback.v4",
     "manifest": "node tools/gen-manifest.cjs youtube.leanback.v4.manifest.json",
+    "repo": "node tools/gen-repo.cjs youtube.leanback.v4.manifest.json repo",
     "prepare": "husky",
     "test:launch": "node --test tests/launch.test.js",
     "test:compat": "es-check",
@@ -20,10 +21,10 @@
     "lint:prettier": "prettier --check .",
     "lint:all": "pnpm run \"/^lint:(?!all)/\""
   },
-  "repository": "github:webosbrew/youtube-webos",
+  "repository": "github:KhalidMh/youtube-webos",
   "license": "GPL-3.0-only",
-  "bugs": "https://github.com/webosbrew/youtube-webos/issues",
-  "homepage": "https://github.com/webosbrew/youtube-webos#readme",
+  "bugs": "https://github.com/KhalidMh/youtube-webos/issues",
+  "homepage": "https://github.com/KhalidMh/youtube-webos#readme",
   "dependencies": {
     "@babel/runtime-corejs3": "^7.29.2",
     "core-js-pure": "^3.49.0",
