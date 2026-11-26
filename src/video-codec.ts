@@ -95,10 +95,12 @@ function filterFormats(formats: StreamingFormat[] | undefined) {
   return originalLength - formats.length;
 }
 
-function forceVp09(playerResponse: PlayerResponse) {
+/** @param parsed Any `JSON.parse` result, including `null` and primitives. */
+function forceVp09(parsed: unknown) {
   if (!shouldForce()) return;
+  if (parsed === null || typeof parsed !== 'object') return;
 
-  const streamingData = playerResponse.streamingData;
+  const streamingData = (parsed as PlayerResponse).streamingData;
   if (!streamingData) return;
 
   const removedFormats = filterFormats(streamingData.formats);
