@@ -17,6 +17,7 @@ jobs:
       - uses: ./.github/actions/setup-env
       - run: pnpm run "/^build|^lint:all/"
       - run: pnpm run test:compat
+      - run: pnpm test
       - run: pnpm run package
 
       - name: Upload artifact
