@@ -1,4 +1,3 @@
-import { configRead } from './config';
 /**
  * Makes an "English" auto-translated subtitle track selectable on the TV.
  *
@@ -8,14 +7,16 @@ import { configRead } from './config';
  * (and TV responses omit that list anyway). So for a video whose captions are
  * in another language there is no way to pick English from the UI.
  *
- * We fix this by intercepting the `/player` JSON response (via the same
- * `JSON.parse` hook technique used by adblock) and injecting a synthetic
- * English track. We clone an existing caption track — preserving all of its
+ * We fix this by injecting a synthetic English track into the `/player`
+ * response. We clone an existing caption track — preserving all of its
  * `baseUrl` query params (auth / `pot` / signature) — and add `&tlang=en`, the
  * parameter YouTube's timedtext server uses to machine-translate any track.
  * The clone then shows up as a normal, directly-selectable option named
  * "English" in the captions menu.
  */
+
+import { configRead } from './config';
+import { addResponseFilter } from './hooks/json-parse';
 
 interface CaptionTrackName {
   simpleText?: string;
@@ -33,11 +34,6 @@ interface CaptionTrack {
   trackName?: string;
 }
 
-interface TranslationLanguage {
-  languageCode: string;
-  languageName?: CaptionTrackName;
-}
-
 interface AudioTrack {
   captionTrackIndices?: number[];
   defaultCaptionTrackIndex?: number;
@@ -46,7 +42,6 @@ interface AudioTrack {
 interface CaptionsTracklistRenderer {
   captionTracks?: CaptionTrack[];
   audioTracks?: AudioTrack[];
-  translationLanguages?: TranslationLanguage[];
 }
 
 const ENGLISH_LABEL = 'English(Auto-generated-forced)';
@@ -76,15 +71,12 @@ function buildTranslatedUrl(baseUrl: string): string | null {
 
 function injectEnglishTrack(renderer: CaptionsTracklistRenderer) {
   const tracks = renderer.captionTracks;
-  if (!Array.isArray(tracks) || tracks.length === 0) return;
+  if (!Array.isArray(tracks)) return;
 
-  // English (native or auto-generated) is already offered — nothing to do.
+  // English (native or auto-generated) is already offered.
   if (tracks.some((t) => isEnglish(t.languageCode))) return;
 
-  // Pick an existing track as the translation source and point it at YouTube's
-  // machine translation. We don't gate on `translationLanguages` — TV responses
-  // omit it — and `buildTranslatedUrl` preserves the source's auth query params.
-  const source = tracks.find((t) => !isEnglish(t.languageCode)) ?? tracks[0];
+  const source = tracks[0];
   if (!source) return;
 
   const baseUrl = buildTranslatedUrl(source.baseUrl);
@@ -122,24 +114,15 @@ function injectEnglishTrack(renderer: CaptionsTracklistRenderer) {
   console.info('[subtitles] Injected auto-translated English caption track');
 }
 
-const origParse = JSON.parse;
-JSON.parse = function (this: unknown) {
-  // eslint-disable-next-line prefer-rest-params
-  const r = origParse.apply(this, arguments as never);
+addResponseFilter('subtitles', (response) => {
+  if (!configRead('forceEnglishSubtitles')) return;
 
-  if (!configRead('forceEnglishSubtitles')) {
-    return r;
-  }
-
-  try {
-    const renderer: CaptionsTracklistRenderer | undefined =
-      r?.captions?.playerCaptionsTracklistRenderer;
-    if (renderer) {
-      injectEnglishTrack(renderer);
+  const renderer = (
+    response as {
+      captions?: {
+        playerCaptionsTracklistRenderer?: CaptionsTracklistRenderer;
+      };
     }
-  } catch (err) {
-    console.warn('[subtitles] Failed to process captions', err);
-  }
-
-  return r;
-};
+  ).captions?.playerCaptionsTracklistRenderer;
+  if (renderer) injectEnglishTrack(renderer);
+});

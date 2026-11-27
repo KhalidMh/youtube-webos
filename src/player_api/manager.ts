@@ -1,9 +1,5 @@
-import {
-  CustomEventTarget,
-  TypedCustomEvent,
-  type EventMapOf
-} from '../custom-event-target';
-import { getPlayer } from './helpers';
+import { CustomEventTarget, TypedCustomEvent } from '../custom-event-target';
+import { requireElement } from '../dom';
 import type { PlayerStateObject, VideoID, YTPlayer } from './yt-api';
 
 function diffPlayerState(
@@ -26,34 +22,19 @@ function diffPlayerState(
 
 interface EventMap {
   newVideo: CustomEvent<VideoID>;
-  playbackStart: CustomEvent<undefined>;
+  /** The first playback of each video, outside a home screen preview. */
+  videoStart: CustomEvent<undefined>;
 }
 
-export enum PlayerMode {
-  PREVIEW,
-  SHORTS,
-  NORMAL
-}
-
-class PlayerManager
-  extends CustomEventTarget<EventMap>
-  implements PlayerManager
-{
+class PlayerManager extends CustomEventTarget<EventMap> {
   #player;
   #lastVideoID: VideoID | null = null;
   #lastPlayerState: PlayerStateObject | null = null;
-
-  #handleNewVideo(videoID: VideoID) {
-    console.debug('[PlayerManager] new video', videoID);
-    this.dispatchEvent(new TypedCustomEvent('newVideo', { detail: videoID }));
-  }
+  #videoStarted = false;
 
   #handlePlayerStateChange = () => {
     const current = this.#player.getPlayerStateObject();
-    const diff = diffPlayerState(
-      this.#lastPlayerState,
-      this.#player.getPlayerStateObject()
-    );
+    const diff = diffPlayerState(this.#lastPlayerState, current);
     this.#lastPlayerState = current;
 
     // Assume video ID hasn't changed if diff is empty.
@@ -61,15 +42,22 @@ class PlayerManager
 
     console.debug('[PlayerManager] player state changed', { diff });
 
-    const currentVideoID = this.currentVideoID;
+    // No video loaded (e.g. after leaving one).
+    const currentVideoID = this.#player.getVideoData().video_id;
+    if (!currentVideoID) return;
+
     if (this.#lastVideoID !== currentVideoID) {
-      if (!currentVideoID) throw new Error('unexpected `null` video ID');
-      this.#handleNewVideo(currentVideoID);
+      console.debug('[PlayerManager] new video', currentVideoID);
       this.#lastVideoID = currentVideoID;
+      this.#videoStarted = false;
+      this.dispatchEvent(
+        new TypedCustomEvent('newVideo', { detail: currentVideoID })
+      );
     }
 
-    if (diff.isPlaying) {
-      this.dispatchEvent(new TypedCustomEvent('playbackStart'));
+    if (diff.isPlaying && !this.#videoStarted && !this.#player.isInline()) {
+      this.#videoStarted = true;
+      this.dispatchEvent(new TypedCustomEvent('videoStart'));
     }
   };
 
@@ -80,39 +68,18 @@ class PlayerManager
     player.addEventListener('onStateChange', this.#handlePlayerStateChange);
   }
 
-  get currentVideoID(): VideoID | null {
-    return this.#player.getVideoData().video_id || null;
-  }
-
-  get playerMode() {
-    if (this.#player.isInline()) return PlayerMode.PREVIEW;
-
-    if (this.#player.getVideoStats().el === 'shortspage') {
-      return PlayerMode.SHORTS;
-    }
-
-    return PlayerMode.NORMAL;
-  }
-
   get player(): YTPlayer {
     return this.#player;
   }
 }
 
-let instance: PlayerManager | null = null;
+let instance: Promise<PlayerManager> | null = null;
 
-export async function getPlayerManager(): Promise<PlayerManager> {
-  if (!instance) {
-    const player = await getPlayer();
-    instance = new PlayerManager(player);
-  }
-
-  instance.addEventListener('playbackStart', function (event) {
-    event.type;
-    event.currentTarget?.currentVideoID;
-    event.detail;
-  });
-
+/** Resolves once YouTube has created its player element. */
+export function getPlayerManager(): Promise<PlayerManager> {
+  instance ??= requireElement('.html5-video-player', HTMLElement).then(
+    (player) => new PlayerManager(player as YTPlayer)
+  );
   return instance;
 }
 

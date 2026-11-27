@@ -10,6 +10,7 @@
  */
 
 import { configRead } from './config';
+import { addResponseFilter } from './hooks/json-parse';
 
 let webpSupported = false;
 const webpTest = new Image();
@@ -19,7 +20,7 @@ webpTest.onload = () => {
 webpTest.src =
   'data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA';
 
-// Only i.ytimg.com: the A/B test hosts (i1, i2, ...) are left alone, as before.
+// Only i.ytimg.com: the A/B test hosts (i1, i2, ...) are left alone.
 // `_live` thumbnails have their own `sddefault`; the other suffixes
 // (`_custom_1`, ...) do not, so they get the video's own `sddefault`.
 const YT_THUMBNAIL_URL =
@@ -51,17 +52,7 @@ function upgradeIn(node: unknown) {
   for (const key in obj) upgradeIn(obj[key]);
 }
 
-/** Upgrade the video thumbnails in a parsed InnerTube response, in place. */
-function upgradeThumbnails(r: unknown) {
+addResponseFilter('thumbnail-quality', (response) => {
   if (!configRead('upgradeThumbnails')) return;
-  if ((r as { responseContext?: unknown } | null)?.responseContext == null)
-    return;
-  upgradeIn(r);
-}
-
-const origParse = JSON.parse;
-JSON.parse = function (text, reviver) {
-  const r: unknown = origParse.call(JSON, text, reviver);
-  upgradeThumbnails(r);
-  return r;
-};
+  upgradeIn(response);
+});

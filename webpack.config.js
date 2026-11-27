@@ -55,8 +55,7 @@ const makeConfig = (_env, argv) => [
             // Some module should not be transpiled by Babel
             // See https://github.com/zloirock/core-js/issues/743#issuecomment-572074215
             // \\ for Windows, / for macOS and Linux
-            /node_modules[\\/]core-js/,
-            /node_modules[\\/]webpack[\\/]buildin/
+            /node_modules[\\/]core-js/
           ],
           options: {
             cacheDirectory: true

@@ -1,32 +1,26 @@
+/**
+ * Sets the quality range at the start of each video, for the two options
+ * that need it: "Force max resolution" and "Prefer VP9 codec" (which also
+ * pins the VP9 format, see `video-codec.ts`).
+ */
+
 import { configRead } from './config';
-import { getPlayerManager, PlayerMode } from './player_api';
-import type { EventMapOf, PlayerManager, VideoID } from './player_api';
-import { showNotification } from './ui';
+import { showNotification } from './notifications';
+import { getPlayerManager } from './player_api/manager';
 import { getPreferredVp9FormatId } from './video-codec';
 
 const playerManager = await getPlayerManager();
+const player = playerManager.player;
 
-function shouldForce() {
-  return configRead('forceHighResVideo');
-}
-
-type EventMap = EventMapOf<PlayerManager>;
-
-function getMaxQualityLabel(player: PlayerManager['player']) {
+function getMaxQualityLabel() {
   return player.getAvailableQualityData()[0]?.qualityLabel;
 }
 
-function notifyPlaybackQuality(this: PlayerManager) {
-  if (!shouldForce()) return;
-
-  const player = this.player;
-
-  const selected = player.getPlaybackQualityLabel();
-  const max = getMaxQualityLabel(player);
-
-  showNotification(`${selected} selected (Max ${max})`, 3000);
-
-  this.removeEventListener('playbackStart', notifyPlaybackQuality);
+function notifyPlaybackQuality() {
+  showNotification(
+    `${player.getPlaybackQualityLabel()} selected (Max ${getMaxQualityLabel()})`,
+    3000
+  );
 }
 
 /**
@@ -40,7 +34,7 @@ function notifyPlaybackQuality(this: PlayerManager) {
  * If the element is still out of sync after it has loaded, seek it back to the
  * position reported by the player.
  */
-function restorePositionAfterReload(player: PlayerManager['player']) {
+function restorePositionAfterReload() {
   const video = player.querySelector('video');
   if (!video) return;
 
@@ -81,48 +75,48 @@ function restorePositionAfterReload(player: PlayerManager['player']) {
   }, 500);
 }
 
-function setPlaybackQuality(this: PlayerManager, _: unknown) {
-  if (this.playerMode === PlayerMode.PREVIEW) return;
-
-  console.debug('[video-quality] setting playback quality');
-  this.removeEventListener('playbackStart', setPlaybackQuality);
-
-  const prevQuality = this.player.getPlaybackQualityLabel();
-  const formatId = configRead('forceVp9Codec')
-    ? getPreferredVp9FormatId(this.player.getAvailableQualityData())
-    : undefined;
-  this.player.setPlaybackQualityRange('highres', 'highres', formatId);
-  restorePositionAfterReload(this.player);
-
-  if (prevQuality === getMaxQualityLabel(this.player)) {
-    notifyPlaybackQuality.call(this);
+/** Notifies once the quality has changed from `prevQuality`. */
+function notifyWhenQualityChanges(prevQuality: string) {
+  if (prevQuality === getMaxQualityLabel()) {
+    notifyPlaybackQuality();
     return;
   }
 
-  let timeoutToken: number | undefined;
-
   // No reliable event for quality change, so poll for it
   const intervalToken = window.setInterval(() => {
-    const currQuality = this.player.getPlaybackQualityLabel();
-    if (currQuality !== prevQuality) {
-      notifyPlaybackQuality.call(this);
+    if (player.getPlaybackQualityLabel() !== prevQuality) {
       clearInterval(intervalToken);
       clearTimeout(timeoutToken);
+      notifyPlaybackQuality();
     }
   }, 100);
 
-  timeoutToken = window.setTimeout(() => {
+  const timeoutToken = window.setTimeout(() => {
     console.warn('[video-quality] timed out waiting for quality change');
     clearInterval(intervalToken);
-    notifyPlaybackQuality.call(this);
+    notifyPlaybackQuality();
   }, 3000);
 }
 
-function handleNewVideo(this: PlayerManager, _: EventMap['newVideo']) {
-  if (!shouldForce()) return;
+playerManager.addEventListener('videoStart', () => {
+  const forceHighRes = configRead('forceHighResVideo');
+  const forceVp9 = configRead('forceVp9Codec');
+  if (!forceHighRes && !forceVp9) return;
 
-  this.removeEventListener('playbackStart', setPlaybackQuality);
-  this.addEventListener('playbackStart', setPlaybackQuality);
-}
+  const formatId = forceVp9
+    ? getPreferredVp9FormatId(player.getAvailableQualityData())
+    : undefined;
+  if (forceVp9 && !formatId) {
+    console.warn('[video-quality] No playable VP09 formatId available');
+    if (!forceHighRes) return;
+  }
 
-playerManager.addEventListener('newVideo', handleNewVideo);
+  console.info(
+    `[video-quality] setting playback quality${formatId ? ` (VP09 formatId ${formatId})` : ''}`
+  );
+  const prevQuality = player.getPlaybackQualityLabel();
+  player.setPlaybackQualityRange('highres', 'highres', formatId);
+  restorePositionAfterReload();
+
+  if (forceHighRes) notifyWhenQualityChanges(prevQuality);
+});

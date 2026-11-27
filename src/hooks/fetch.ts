@@ -1,22 +1,12 @@
 import { CustomEventTarget, TypedCustomEvent } from '../custom-event-target';
 
-export interface StringConvertible {
-  toString(): string;
-}
-
-export type FetchTarget = Request | StringConvertible;
+type FetchTarget = Request | { toString(): string };
 
 let registry: FetchRegistry | null = null;
 
-export interface RequestInfo {
-  url: URL;
-  resource: FetchTarget;
-  init?: RequestInit | undefined;
-}
-
 interface EventMap {
-  request: CustomEvent<RequestInfo>;
-  response: CustomEvent<Response>;
+  /** Cancelable: `preventDefault()` makes the request fail. */
+  request: CustomEvent<{ url: URL }>;
 }
 
 export class FetchRegistry extends CustomEventTarget<EventMap> {
@@ -70,7 +60,7 @@ export class FetchRegistry extends CustomEventTarget<EventMap> {
     );
     const reqAllowed = this.dispatchEvent(
       new TypedCustomEvent('request', {
-        detail: { url, resource, init },
+        detail: { url },
         cancelable: true
       })
     );
@@ -93,18 +83,6 @@ export class FetchRegistry extends CustomEventTarget<EventMap> {
       resBody && console.debug(`Response Body ${this.#fetchCount}:`, resBody);
     }
 
-    const resAllowed = this.dispatchEvent(
-      new TypedCustomEvent('response', { detail: res, cancelable: true })
-    );
-
-    if (!resAllowed) {
-      console.info(
-        `Fetch response ${this.#fetchCount} was cancelled by listener.`,
-        res
-      );
-      throw new TypeError('Failed to fetch');
-    }
-
     this.#fetchCount++;
 
     return res;
@@ -116,11 +94,4 @@ export class FetchRegistry extends CustomEventTarget<EventMap> {
     }
     return registry;
   }
-
-  [Symbol.dispose]() {
-    window.fetch = this.#originalFetch;
-    registry = null;
-  }
 }
-
-registry = FetchRegistry.getInstance();

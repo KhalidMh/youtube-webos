@@ -8,7 +8,7 @@
  */
 
 import { configAddChangeListener, configRead } from './config';
-import { setUpdateStatus, showNotification } from './ui';
+import { showNotification } from './notifications';
 import { isNewerVersion } from './version-compare.js';
 
 const APP_ID = 'youtube.leanback.v4';
@@ -60,16 +60,36 @@ async function fetchLatestVersion(): Promise<string | undefined> {
   return repo.packages?.find((pkg) => pkg.id === APP_ID)?.manifest?.version;
 }
 
-/** Shows the status in the settings panel; returns whether `latest` is newer. */
+export interface UpdateStatus {
+  /** Empty while unknown. */
+  text: string;
+  updateAvailable: boolean;
+}
+
+let status: UpdateStatus = { text: '', updateAvailable: false };
+const statusListeners: ((status: UpdateStatus) => void)[] = [];
+
+/** Calls `listener` with the current status, then on every change. */
+export function onUpdateStatus(listener: (status: UpdateStatus) => void) {
+  statusListeners.push(listener);
+  listener(status);
+}
+
+function setStatus(next: UpdateStatus) {
+  status = next;
+  for (const listener of statusListeners) listener(status);
+}
+
+/** Records the status for `latest`; returns whether it is newer. */
 function showStatus(latest: string | undefined): boolean {
   if (latest === undefined) return false;
 
-  if (isNewerVersion(latest, __YTAF_VERSION__)) {
-    setUpdateStatus(`update available: v${latest}`, true);
-    return true;
-  }
-  setUpdateStatus('up to date', false);
-  return false;
+  const updateAvailable = isNewerVersion(latest, __YTAF_VERSION__);
+  setStatus({
+    text: updateAvailable ? `update available: v${latest}` : 'up to date',
+    updateAvailable
+  });
+  return updateAvailable;
 }
 
 let checking = false;
@@ -111,10 +131,10 @@ async function checkForUpdates() {
 
 window.setTimeout(() => void checkForUpdates(), STARTUP_DELAY_MS);
 
-configAddChangeListener('checkForUpdates', (evt) => {
-  if ((evt as CustomEvent<{ newValue: boolean }>).detail.newValue) {
+configAddChangeListener('checkForUpdates', (enabled) => {
+  if (enabled) {
     void checkForUpdates();
   } else {
-    setUpdateStatus('', false);
+    setStatus({ text: '', updateAvailable: false });
   }
 });

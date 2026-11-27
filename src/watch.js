@@ -1,30 +1,30 @@
 import { configRead, configAddChangeListener } from './config';
 import './watch.css';
-import { requireElement } from './player_api/helpers';
+import { requireElement } from './dom';
 
+/**
+ * The clock in the top-right corner. Hidden while the player has focus (a
+ * video playing full screen), unless pinned.
+ */
 class Watch {
-  #watch;
+  #watch = document.createElement('div');
+  /** @type {ReturnType<typeof setTimeout> | undefined} */
   #timer;
-  #attrChanges;
+  /** @type {HTMLElement | null} */
   #player = null;
+  /** @type {MutationObserver | null} */
+  #playerObserver = null;
   #pinned = false;
-  #PLAYER_SELECTOR = 'ytlr-watch-default';
+  #destroyed = false;
 
   constructor() {
-    this.createElement();
-    this.startClock();
-    this.playerEvents();
-  }
-
-  createElement() {
-    this.#watch = document.createElement('div');
     this.#watch.className = 'webOs-watch';
     document.body.appendChild(this.#watch);
+    this.#startClock();
+    void this.#followPlayerFocus();
   }
 
-  startClock() {
-    const nextSeg = (60 - new Date().getSeconds()) * 1000;
-
+  #startClock() {
     const formatter = new Intl.DateTimeFormat(navigator.language, {
       hour: 'numeric',
       minute: 'numeric'
@@ -35,65 +35,57 @@ class Watch {
     };
 
     setTime();
-    setTimeout(() => {
-      setTime();
-      this.#timer = setInterval(setTime, 60000);
-    }, nextSeg);
+    this.#timer = setTimeout(
+      () => {
+        setTime();
+        this.#timer = setInterval(setTime, 60000);
+      },
+      (60 - new Date().getSeconds()) * 1000
+    );
   }
 
-  playerAppear(video) {
-    this.changeVisibility();
-    this.playerObserver(video);
-  }
+  async #followPlayerFocus() {
+    const player = await requireElement('ytlr-watch-default', HTMLElement);
+    if (this.#destroyed) return;
 
-  changeVisibility() {
-    // When pinned the clock stays visible regardless of whether the player is
-    // focused.
-    if (this.#pinned) {
-      this.#watch.style.display = 'block';
-      return;
-    }
-
-    const focused = this.#player?.getAttribute('hybridnavfocusable') === 'true';
-    this.#watch.style.display = focused ? 'none' : 'block';
-  }
-
-  setPinned(pinned) {
-    this.#pinned = pinned;
-    this.changeVisibility();
-  }
-
-  async playerEvents() {
-    this.#player = await requireElement(this.#PLAYER_SELECTOR, HTMLElement);
-    this.playerAppear(this.#player);
-  }
-
-  playerObserver(node) {
-    this.#attrChanges = new MutationObserver(() => {
-      this.changeVisibility();
-    });
-
-    this.#attrChanges.observe(node, {
+    this.#player = player;
+    this.#updateVisibility();
+    this.#playerObserver = new MutationObserver(() => this.#updateVisibility());
+    this.#playerObserver.observe(player, {
       attributes: true,
       attributeFilter: ['hybridnavfocusable']
     });
   }
 
+  #updateVisibility() {
+    const focused = this.#player?.getAttribute('hybridnavfocusable') === 'true';
+    this.#watch.style.display = focused && !this.#pinned ? 'none' : 'block';
+  }
+
+  /** @param {boolean} pinned */
+  setPinned(pinned) {
+    this.#pinned = pinned;
+    this.#updateVisibility();
+  }
+
   destroy() {
+    this.#destroyed = true;
+    clearTimeout(this.#timer);
     clearInterval(this.#timer);
-    this.#watch?.remove();
-    this.#attrChanges?.disconnect();
+    this.#watch.remove();
+    this.#playerObserver?.disconnect();
   }
 }
 
+/** @type {Watch | null} */
 let watchInstance = null;
 
 function refreshWatch() {
   const pinned = configRead('keepWatchPinned');
 
-  // The clock exists while either the config option is on or it's pinned.
+  // "Always show clock" shows it even with "Show clock" off.
   if (configRead('showWatch') || pinned) {
-    watchInstance = watchInstance ? watchInstance : new Watch();
+    watchInstance ??= new Watch();
     watchInstance.setPinned(pinned);
   } else {
     watchInstance?.destroy();
@@ -103,10 +95,5 @@ function refreshWatch() {
 
 refreshWatch();
 
-configAddChangeListener('showWatch', () => {
-  refreshWatch();
-});
-
-configAddChangeListener('keepWatchPinned', () => {
-  refreshWatch();
-});
+configAddChangeListener('showWatch', refreshWatch);
+configAddChangeListener('keepWatchPinned', refreshWatch);

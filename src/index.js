@@ -1,4 +1,4 @@
-import { extractLaunchParams, handleLaunch } from './utils';
+import { extractLaunchParams, handleLaunch } from './launch';
 import { waitForNetwork } from './wait-for-network';
 
 async function main() {

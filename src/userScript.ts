@@ -1,37 +1,27 @@
 import 'whatwg-fetch';
 import './domrect-polyfill';
+// Before YouTube parses its first response, and before any module registers a
+// filter with it.
+import './hooks/json-parse';
+// Before YouTube probes which codecs the TV supports.
 import './video-codec';
 
-import { handleLaunch } from './utils';
-
-document.addEventListener(
-  'webOSRelaunch',
-  (evt) => {
-    console.info('RELAUNCH:', evt, window.launchParams);
-    handleLaunch(evt.detail);
-  },
-  true
-);
-
-import './app_api/index';
-import './adblock.js';
-import './hooks/json-stringify';
+import './relaunch';
+import './adblock';
 import './subtitles';
-import './shorts.js';
-import './remove-clutter';
-import './early-browse';
+import './remove-content';
 import './sponsorblock.js';
 import './ui.js';
+import './audio-only.js';
+import './hide-logo.js';
 import './font-fix.css';
 import './thumbnail-quality';
 import './screensaver-fix';
-import './yt-fixes.css';
+import './yt-fixes';
 import './watch.js';
 import './video-quality';
 import './lang-settings-fix';
-import './remove-endscreen';
 import './disable-you-there';
-import './hooks';
 import './block-webos-cast';
 import './auto-account-select';
 import './live-catchup';

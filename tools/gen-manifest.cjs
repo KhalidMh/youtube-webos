@@ -23,7 +23,6 @@ fs.writeFileSync(
     version: pkgJson.version,
     type: appinfo.type,
     title: appinfo.title,
-    // appDescription: appinfo.appDescription,
     iconUri: `https://raw.githubusercontent.com/${repoSlug}/main/assets/largeIcon.png`,
     sourceUrl: `https://github.com/${repoSlug}`,
     rootRequired: false,

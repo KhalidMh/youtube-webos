@@ -1,6 +1,6 @@
 import { configRead } from './config';
-import { getPlayerManager } from './player_api';
-import { showNotification } from './ui';
+import { getPlayerManager } from './player_api/manager';
+import { showNotification } from './notifications';
 
 const MARGIN_MIN = 1.5;
 const MARGIN_MAX = 8;

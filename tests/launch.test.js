@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { handleLaunch } from '../src/utils.js';
+import { handleLaunch, hasCastParams, isCastLaunch } from '../src/launch.js';
 
 function launchAssignment(params) {
   const assigned = [];
@@ -24,26 +24,35 @@ function launch(params) {
 
 const origin = 'https://www.youtube.com';
 
-for (const value of [
-  'https://www.youtube.com/tv#/',
-  'https://www.youtube.com:443/watch?v=abc',
-  'https://WWW.YOUTUBE.COM/tv?x=1',
-  'https://www.youtube.com/watch?v=a#b',
-  ' https://www.youtube.com/tv ',
-  'HTTPS://WWW.YOUTUBE.COM:443/tv?x=1',
-  'https://www.youtube.com:0443/tv',
-  'https://%77%77%77.youtube.com/tv',
-  'https://www%2eyoutube%2ecom/tv',
-  'https://www\u3002youtube\uff0ecom/tv',
-  'https://\uff57\uff57\uff57.youtube.com/tv',
-  'https://www.youtube.com/tv?q=%2F%26%3D#%E2%9C%93',
-  'https://www.youtube.com\\@evil.example/tv?x=1'
+for (const [value, expected] of [
+  ['https://www.youtube.com/tv#/', 'https://www.youtube.com/tv#/'],
+  [
+    'https://www.youtube.com:443/watch?v=abc',
+    'https://www.youtube.com/watch?v=abc'
+  ],
+  ['https://WWW.YOUTUBE.COM/tv?x=1', 'https://www.youtube.com/tv?x=1'],
+  [
+    'https://www.youtube.com/watch?v=a#b',
+    'https://www.youtube.com/watch?v=a#b'
+  ],
+  [' https://www.youtube.com/tv ', 'https://www.youtube.com/tv'],
+  ['HTTPS://WWW.YOUTUBE.COM:443/tv?x=1', 'https://www.youtube.com/tv?x=1'],
+  ['https://www.youtube.com:0443/tv', 'https://www.youtube.com/tv'],
+  ['https://%77%77%77.youtube.com/tv', 'https://www.youtube.com/tv'],
+  ['https://www%2eyoutube%2ecom/tv', 'https://www.youtube.com/tv'],
+  ['https://www。youtube．com/tv', 'https://www.youtube.com/tv'],
+  ['https://ｗｗｗ.youtube.com/tv', 'https://www.youtube.com/tv'],
+  [
+    'https://www.youtube.com/tv?q=%2F%26%3D#%E2%9C%93',
+    'https://www.youtube.com/tv?q=%2F%26%3D#%E2%9C%93'
+  ],
+  [
+    'https://www.youtube.com\\@evil.example/tv?x=1',
+    'https://www.youtube.com/@evil.example/tv?x=1'
+  ]
 ]) {
-  test(`direct URL assigns the validated canonical string: ${value}`, () => {
-    assert.equal(
-      launchAssignment({ contentTarget: value }),
-      new URL(value).href
-    );
+  test(`direct URL opens its canonical form: ${value}`, () => {
+    assert.equal(launchAssignment({ contentTarget: value }), expected);
   });
 }
 
@@ -136,3 +145,29 @@ for (const intent of ['PlayContent', 'SearchContent']) {
     );
   });
 }
+
+for (const param of ['dialLaunch', 'pairingCode', 'cc2']) {
+  test(`cast launch with ${param} is detected and kept in the URL`, () => {
+    const params = { contentTarget: `${param}=x&theme=cl` };
+    assert.equal(isCastLaunch(params), true);
+    // block-webos-cast reads the opened URL's query after a fresh launch.
+    assert.equal(hasCastParams(launch(params).search), true);
+  });
+}
+
+test('cast params in a direct URL are detected', () => {
+  assert.equal(
+    isCastLaunch({ contentTarget: origin + '/tv?dialLaunch=watch' }),
+    true
+  );
+});
+
+test('other launches are not cast launches', () => {
+  for (const params of [
+    {},
+    { contentTarget: 'v=abc' },
+    { contentTarget: { intent: 'PlayContent', intentParam: 'x' } }
+  ]) {
+    assert.equal(isCastLaunch(params), false);
+  }
+});

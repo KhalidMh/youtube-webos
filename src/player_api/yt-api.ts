@@ -1,22 +1,12 @@
-export enum PlayerState {
-  UNSTARTED = -1,
-  ENDED = 0,
-  PLAYING = 1,
-  PAUSED = 2,
-  BUFFERING = 3,
-  CUED = 5
-}
-
 interface YTPlayerEventMap extends HTMLElementEventMap {
-  onStateChange: PlayerState;
+  /** -1 unstarted, 0 ended, 1 playing, 2 paused, 3 buffering, 5 cued */
+  onStateChange: number;
 }
 
 export interface VideoQualityData {
   formatId: string | undefined;
   qualityLabel: string;
-  quality: string;
   isPlayable: boolean;
-  paygatedQualityDetails?: unknown;
 }
 
 export type VideoID = string;
@@ -41,21 +31,11 @@ export type PlayerStateKeys =
 
 export type PlayerStateObject = Record<PlayerStateKeys, boolean>;
 
-export interface VideoStats {
-  el?: 'leanback' | 'shortspage';
-}
-
 export interface YTPlayer extends HTMLElement {
   addEventListener<K extends keyof YTPlayerEventMap>(
     type: K,
     listener: (this: YTPlayer, ev: YTPlayerEventMap[K]) => any,
     options?: boolean | AddEventListenerOptions
-  ): void;
-
-  removeEventListener<K extends keyof YTPlayerEventMap>(
-    type: K,
-    listener: (this: YTPlayer, ev: YTPlayerEventMap[K]) => any,
-    options?: boolean | EventListenerOptions
   ): void;
 
   getPlaybackQualityLabel(): string; // empty if not available
@@ -75,14 +55,6 @@ export interface YTPlayer extends HTMLElement {
 
   getPlayerStateObject(): PlayerStateObject;
 
-  /**
-   * `true` if playing a preview. Otherwise `false`.
-   */
+  /** `true` while playing a home screen preview. */
   isInline(): boolean;
-
-  getVideoStats(): VideoStats;
-
-  getPlaybackRate(): number;
-
-  setPlaybackRate(rate: number): void;
 }

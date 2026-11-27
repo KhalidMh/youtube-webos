@@ -1,45 +1,13 @@
 import sha256 from 'tiny-sha256';
 import { configRead } from './config';
-import { showNotification } from './ui';
+import { SPONSORBLOCK_CATEGORIES as CATEGORIES } from './sponsorblock-categories.js';
+import { showNotification } from './notifications';
+import './sponsorblock.css';
 
-// Copied from https://github.com/ajayyy/SponsorBlock/blob/9392d16617d2d48abb6125c00e2ff6042cb7bebe/src/config.ts#L179-L233
-const barTypes = {
-  sponsor: {
-    color: '#00d400',
-    opacity: '0.7',
-    name: 'sponsored segment'
-  },
-  intro: {
-    color: '#00ffff',
-    opacity: '0.7',
-    name: 'intro'
-  },
-  outro: {
-    color: '#0202ed',
-    opacity: '0.7',
-    name: 'outro'
-  },
-  interaction: {
-    color: '#cc00ff',
-    opacity: '0.7',
-    name: 'interaction reminder'
-  },
-  selfpromo: {
-    color: '#ffff00',
-    opacity: '0.7',
-    name: 'self-promotion'
-  },
-  music_offtopic: {
-    color: '#ff9900',
-    opacity: '0.7',
-    name: 'non-music part'
-  },
-  preview: {
-    color: '#008fd6',
-    opacity: '0.7',
-    name: 'recap or preview'
-  }
-};
+/** @param {string} id */
+function getCategory(id) {
+  return CATEGORIES.find((category) => category.id === id);
+}
 
 const sponsorblockAPI = 'https://sponsorblock.inf.re/api';
 
@@ -66,21 +34,15 @@ class SponsorBlockHandler {
 
   async init() {
     const videoHash = sha256(this.videoID).substring(0, 4);
-    const categories = [
-      'sponsor',
-      'intro',
-      'outro',
-      'interaction',
-      'selfpromo',
-      'music_offtopic',
-      'preview'
-    ];
+    const categories = CATEGORIES.map((category) => category.id);
     const resp = await fetch(
       `${sponsorblockAPI}/skipSegments/${videoHash}?categories=${encodeURIComponent(
         JSON.stringify(categories)
       )}`
     );
     const results = await resp.json();
+    // Destroyed while the request was in flight: the video has changed.
+    if (!this.active) return;
 
     const result = results.find((v) => v.videoID === this.videoID);
     console.debug(this.videoID, 'Got it:', result);
@@ -101,29 +63,9 @@ class SponsorBlockHandler {
   }
 
   getSkippableCategories() {
-    const skippableCategories = [];
-    if (configRead('enableSponsorBlockSponsor')) {
-      skippableCategories.push('sponsor');
-    }
-    if (configRead('enableSponsorBlockIntro')) {
-      skippableCategories.push('intro');
-    }
-    if (configRead('enableSponsorBlockOutro')) {
-      skippableCategories.push('outro');
-    }
-    if (configRead('enableSponsorBlockInteraction')) {
-      skippableCategories.push('interaction');
-    }
-    if (configRead('enableSponsorBlockSelfPromo')) {
-      skippableCategories.push('selfpromo');
-    }
-    if (configRead('enableSponsorBlockMusicOfftopic')) {
-      skippableCategories.push('music_offtopic');
-    }
-    if (configRead('enableSponsorBlockPreview')) {
-      skippableCategories.push('preview');
-    }
-    return skippableCategories;
+    return CATEGORIES.filter((category) => configRead(category.option.key)).map(
+      (category) => category.id
+    );
   }
 
   attachVideo() {
@@ -164,12 +106,10 @@ class SponsorBlockHandler {
 
     this.segments.forEach((segment) => {
       const [start, end] = segment.segment;
-      const barType = barTypes[segment.category] || {
-        color: 'blue'
-      };
       const elm = document.createElement('div');
       elm.className = 'ytaf-sponsorblock-segment';
-      elm.style['background-color'] = barType.color;
+      elm.style['background-color'] =
+        getCategory(segment.category)?.color ?? 'blue';
       elm.style['left'] = `${(start / videoDuration) * 100.0}%`;
       elm.style['width'] = `${((end - start) / videoDuration) * 100.0}%`;
       this.sliderSegmentsOverlay.appendChild(elm);
@@ -218,17 +158,15 @@ class SponsorBlockHandler {
 
     this.sliderObserver = new MutationObserver((mutations) => {
       mutations.forEach((m) => {
-        if (m.removedNodes) {
-          for (const node of m.removedNodes) {
-            if (node === this.sliderSegmentsOverlay) {
-              console.debug('bringing back segments overlay');
-              addSliderOverlay();
-            }
-            if (node === this.slider) {
-              console.debug('slider removed, watching again');
-              this.sliderObserver.disconnect();
-              watchForSlider();
-            }
+        for (const node of m.removedNodes) {
+          if (node === this.sliderSegmentsOverlay) {
+            console.debug('bringing back segments overlay');
+            addSliderOverlay();
+          }
+          if (node === this.slider) {
+            console.debug('slider removed, watching again');
+            this.sliderObserver.disconnect();
+            watchForSlider();
           }
         }
       });
@@ -292,7 +230,8 @@ class SponsorBlockHandler {
           return;
         }
 
-        const skipName = barTypes[segment.category]?.name || segment.category;
+        const skipName =
+          getCategory(segment.category)?.name ?? segment.category;
         console.debug(this.videoID, 'Skipping', segment);
         showNotification(`Skipping ${skipName}`, 2000, 'indigo');
         this.video.currentTime = end;

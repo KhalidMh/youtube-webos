@@ -1,0 +1,8 @@
+.ytaf-audio-only-message {
+  position: fixed;
+  top: 35%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}

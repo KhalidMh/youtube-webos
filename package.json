@@ -15,7 +15,6 @@
     "repo": "node tools/gen-repo.cjs youtube.leanback.v4.manifest.json repo",
     "prepare": "husky",
     "test": "node --test \"tests/**/*.test.js\"",
-    "test:launch": "node --test tests/launch.test.js",
     "test:compat": "es-check",
     "lint:eslint": "eslint --concurrency auto",
     "lint:tsc": "tsc -b",
@@ -29,7 +28,6 @@
   "dependencies": {
     "@babel/runtime-corejs3": "^7.29.2",
     "core-js-pure": "^3.49.0",
-    "regenerator-runtime": "^0.14.1",
     "tiny-sha256": "^1.0.2",
     "whatwg-fetch": "^3.6.20"
   },
@@ -47,7 +45,6 @@
     "@webos-tools/cli": "github:fire332/webos-cli#6cfbcf231a0fa1e50519d370ee6e5edc71c4998a",
     "babel-loader": "^10.1.1",
     "babel-plugin-polyfill-corejs3": "^0.14.2",
-    "babel-plugin-polyfill-regenerator": "^0.6.8",
     "copy-webpack-plugin": "^14.0.0",
     "css-loader": "^7.1.4",
     "es-check": "^9.6.4",
@@ -68,8 +65,7 @@
     "transform-async-modules-webpack-plugin": "^1.1.1",
     "typescript": "^6.0.2",
     "webpack": "^5.106.1",
-    "webpack-cli": "^7.0.2",
-    "which-builtin-type": "^1.2.1"
+    "webpack-cli": "^7.0.2"
   },
   "devEngines": {
     "runtime": {

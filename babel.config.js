@@ -34,17 +34,9 @@ function makeConfig(api) {
         {
           method: 'usage-pure',
           version: corejspureVersion,
-          /** TODO: Remove after core rewrite.
-           * The way pure polyfills work completely breaks wrapper chaining.
-           * The new core will only wrap each global once, which will completely side-step the issue.
-           */
+          // Keeps `JSON.parse` the global one, which hooks/json-parse.ts wraps
+          // for YouTube's own calls.
           exclude: ['es.json.parse', 'esnext.json.parse']
-        }
-      ],
-      [
-        'polyfill-regenerator',
-        {
-          method: 'usage-pure'
         }
       ]
     ],

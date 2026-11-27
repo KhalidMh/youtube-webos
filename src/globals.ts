@@ -7,7 +7,8 @@ declare global {
   const __YTAF_UPDATE_URL__: string;
 
   interface Window {
-    launchParams?: webOSLaunchParams;
+    /** JSON-encoded `webOSLaunchParams` */
+    launchParams?: string;
     __ytaf_debug__?: boolean;
     /** Set by YouTube's page: the home screen it fetches before the user script runs */
     pendingEarlyBrowse?: Promise<{ response?: unknown } | undefined>;

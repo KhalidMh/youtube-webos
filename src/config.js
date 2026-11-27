@@ -1,338 +1,233 @@
+import { SPONSORBLOCK_CATEGORIES } from './sponsorblock-categories.js';
+
 const CONFIG_KEY = 'ytaf-configuration';
 
 /**
- * Every option: its default, `desc` (the label in the settings panel) and
- * `hint` (one short sentence shown under the label).
+ * @typedef {object} ConfigOption
+ * @property {string} key
+ * @property {boolean} default
+ * @property {string} desc The label in the settings panel.
+ * @property {string} hint One short sentence shown under the label.
+ * @property {ConfigOption[]} [children] Options that only apply while this
+ *   one is on, shown nested under it.
+ *
+ * @typedef {object} ConfigSection
+ * @property {string} title
+ * @property {string} [note] Shown at the end of the section.
+ * @property {ConfigOption[]} options
  */
-const configOptions = new Map([
-  [
-    'enableAdBlock',
-    {
-      default: true,
-      desc: 'Block ads',
-      hint: 'Removes video ads and sponsored tiles from your feeds.'
-    }
-  ],
-  [
-    'upgradeThumbnails',
-    {
-      default: false,
-      desc: 'Sharper thumbnails',
-      hint: 'Loads higher resolution thumbnails. Uses a little more data.'
-    }
-  ],
-  [
-    'removeShorts',
-    {
-      default: false,
-      desc: 'Remove Shorts',
-      hint: 'Removes Shorts from your feeds and the Shorts entry from the side menu.'
-    }
-  ],
-  [
-    'enableSponsorBlock',
-    {
-      default: true,
-      desc: 'Enable SponsorBlock',
-      hint: 'Skips the parts of videos that SponsorBlock users have marked.'
-    }
-  ],
-  [
-    'enableSponsorBlockSponsor',
-    {
-      default: true,
-      desc: 'Sponsors',
-      hint: 'Paid promotions and advertisements inside the video.'
-    }
-  ],
-  [
-    'enableSponsorBlockIntro',
-    {
-      default: true,
-      desc: 'Intros',
-      hint: 'Intro animations and intermissions with no actual content.'
-    }
-  ],
-  [
-    'enableSponsorBlockOutro',
-    {
-      default: true,
-      desc: 'Outros',
-      hint: 'End cards and credits.'
-    }
-  ],
-  [
-    'enableSponsorBlockInteraction',
-    {
-      default: true,
-      desc: 'Interaction reminders',
-      hint: 'Reminders to like, subscribe or follow.'
-    }
-  ],
-  [
-    'enableSponsorBlockSelfPromo',
-    {
-      default: true,
-      desc: 'Self promotion',
-      hint: "Unpaid plugs for merch, donations or the creator's other channels."
-    }
-  ],
-  [
-    'enableSponsorBlockMusicOfftopic',
-    {
-      default: true,
-      desc: 'Non-music in music videos',
-      hint: 'Talking and other non-music parts of music videos.'
-    }
-  ],
-  [
-    'enableSponsorBlockPreview',
-    {
-      default: false,
-      desc: 'Recaps and previews',
-      hint: 'Recaps of earlier episodes and previews of what is coming.'
-    }
-  ],
-  [
-    'hideLogo',
-    {
-      default: false,
-      desc: 'Hide YouTube logo',
-      hint: 'Removes the logo from the top-right corner.'
-    }
-  ],
-  [
-    'showWatch',
-    {
-      default: false,
-      desc: 'Show clock',
-      hint: 'Shows the time in the top-right corner, except over a playing video.'
-    }
-  ],
-  [
-    'keepWatchPinned',
-    {
-      default: false,
-      desc: 'Always show clock',
-      hint: 'Keeps the clock on screen during playback too.'
-    }
-  ],
-  [
-    'forceHighResVideo',
-    {
-      default: false,
-      desc: 'Force max resolution',
-      hint: 'Always plays the highest quality available instead of letting YouTube choose.'
-    }
-  ],
-  [
-    'forceVp9Codec',
-    {
-      default: false,
-      desc: 'Prefer VP9 codec',
-      hint: 'Plays VP9 instead of AV1. Try it if videos stutter on your TV.'
-    }
-  ],
-  [
-    'removeEndscreen',
-    {
-      default: false,
-      desc: 'Remove end screens',
-      hint: 'Hides the video suggestions shown over the last seconds of a video.'
-    }
-  ],
-  [
-    'disableYouThere',
-    {
-      default: true,
-      desc: 'Disable "Continue watching?"',
-      hint: 'Stops YouTube from pausing to ask whether you are still watching.'
-    }
-  ],
-  [
-    'autoAccountSelect',
-    {
-      default: false,
-      desc: 'Skip account selection',
-      hint: 'Goes straight to your account instead of the "Who\'s watching?" screen at startup.'
-    }
-  ],
-  [
-    'blockWebosCast',
-    {
-      default: true,
-      desc: 'Block webOS Cast service',
-      hint: "Stops LG's built-in Chromecast overlay from interfering. Casting from a phone still works."
-    }
-  ],
-  [
-    'forceEnglishSubtitles',
-    {
-      default: false,
-      desc: 'English subtitles for any video',
-      hint: 'Adds a machine-translated English track when captions exist only in another language.'
-    }
-  ],
-  [
-    'enableLiveCatchup',
-    {
-      default: false,
-      desc: 'Live catch-up',
-      hint: 'Skips ahead when a live stream falls behind, to stay close to real time.'
-    }
-  ],
-  [
-    'removeQrCodes',
-    {
-      default: true,
-      desc: 'Hide QR codes',
-      hint: 'Removes the shopping QR codes shown over some videos.'
-    }
-  ],
-  [
-    'hideSignInPrompts',
-    {
-      default: true,
-      desc: 'Hide sign-in prompts',
-      hint: 'When watching as a guest, removes the "Sign in" banners and tiles.'
-    }
-  ],
-  [
-    'removeMostRelevant',
-    {
-      default: false,
-      desc: 'Hide "Most relevant" row',
-      hint: 'Removes that row from the top of Subscriptions. English YouTube UI only.'
-    }
-  ],
-  [
-    'checkForUpdates',
-    {
-      default: true,
-      desc: 'Check for updates',
-      hint: 'Once a day, checks Homebrew Channel for a new version of this app.'
-    }
-  ]
-]);
 
-const defaultConfig = (() => {
-  let ret = {};
-  for (const [k, v] of configOptions) {
-    ret[k] = v.default;
+/**
+ * Every option, in the settings panel's layout: one tab per section.
+ * @type {ConfigSection[]}
+ */
+export const CONFIG_SECTIONS = [
+  {
+    title: 'Content',
+    options: [
+      {
+        key: 'enableAdBlock',
+        default: true,
+        desc: 'Block ads',
+        hint: 'Removes video ads and sponsored tiles from your feeds.'
+      },
+      {
+        key: 'removeQrCodes',
+        default: true,
+        desc: 'Hide QR codes',
+        hint: 'Removes the shopping QR codes shown over some videos.'
+      },
+      {
+        key: 'hideSignInPrompts',
+        default: true,
+        desc: 'Hide sign-in prompts',
+        hint: 'When watching as a guest, removes the "Sign in" banners and tiles.'
+      },
+      {
+        key: 'removeShorts',
+        default: false,
+        desc: 'Remove Shorts',
+        hint: 'Removes Shorts from your feeds and the Shorts entry from the side menu.'
+      },
+      {
+        key: 'removeMostRelevant',
+        default: false,
+        desc: 'Hide "Most relevant" row',
+        hint: 'Removes that row from the top of Subscriptions. English YouTube UI only.'
+      },
+      {
+        key: 'removeEndscreen',
+        default: false,
+        desc: 'Remove end screens',
+        hint: 'Hides the video suggestions shown over the last seconds of a video.'
+      },
+      {
+        key: 'upgradeThumbnails',
+        default: false,
+        desc: 'Sharper thumbnails',
+        hint: 'Loads higher resolution thumbnails. Uses a little more data.'
+      }
+    ]
+  },
+  {
+    title: 'Playback',
+    options: [
+      {
+        key: 'forceHighResVideo',
+        default: false,
+        desc: 'Force max resolution',
+        hint: 'Always plays the highest quality available instead of letting YouTube choose.'
+      },
+      {
+        key: 'forceVp9Codec',
+        default: false,
+        desc: 'Prefer VP9 codec',
+        hint: 'Plays VP9 instead of AV1. Try it if videos stutter on your TV.'
+      },
+      {
+        key: 'disableYouThere',
+        default: true,
+        desc: 'Disable "Continue watching?"',
+        hint: 'Stops YouTube from pausing to ask whether you are still watching.'
+      },
+      {
+        key: 'enableLiveCatchup',
+        default: false,
+        desc: 'Live catch-up',
+        hint: 'Skips ahead when a live stream falls behind, to stay close to real time.'
+      },
+      {
+        key: 'forceEnglishSubtitles',
+        default: false,
+        desc: 'English subtitles for any video',
+        hint: 'Adds a machine-translated English track when captions exist only in another language.'
+      }
+    ]
+  },
+  {
+    title: 'SponsorBlock',
+    note: 'Segments are submitted by the SponsorBlock community (sponsor.ajay.app).',
+    options: [
+      {
+        key: 'enableSponsorBlock',
+        default: true,
+        desc: 'Enable SponsorBlock',
+        hint: 'Skips the parts of videos that SponsorBlock users have marked.',
+        children: SPONSORBLOCK_CATEGORIES.map((category) => category.option)
+      }
+    ]
+  },
+  {
+    title: 'Interface',
+    options: [
+      {
+        key: 'hideLogo',
+        default: false,
+        desc: 'Hide YouTube logo',
+        hint: 'Removes the logo from the top-right corner.'
+      },
+      {
+        key: 'showWatch',
+        default: false,
+        desc: 'Show clock',
+        hint: 'Shows the time in the top-right corner, except over a playing video.'
+      },
+      {
+        key: 'keepWatchPinned',
+        default: false,
+        desc: 'Always show clock',
+        hint: 'Keeps the clock on screen during playback too.'
+      },
+      {
+        key: 'autoAccountSelect',
+        default: false,
+        desc: 'Skip account selection',
+        hint: 'Goes straight to your account instead of the "Who\'s watching?" screen at startup.'
+      },
+      {
+        key: 'blockWebosCast',
+        default: true,
+        desc: 'Block webOS Cast service',
+        hint: "Stops LG's built-in Chromecast overlay from interfering. Casting from a phone still works."
+      },
+      {
+        key: 'checkForUpdates',
+        default: true,
+        desc: 'Check for updates',
+        hint: 'Once a day, checks Homebrew Channel for a new version of this app.'
+      }
+    ]
   }
-  return ret;
-})();
+];
 
-/** @type {Record<string, DocumentFragment>} as const */
-const configFrags = (() => {
-  let ret = {};
-  for (const k of configOptions.keys()) {
-    ret[k] = new DocumentFragment();
+/** @type {Map<string, ConfigOption>} */
+const configOptions = new Map();
+/** @param {ConfigOption[]} options */
+function addOptions(options) {
+  for (const option of options) {
+    configOptions.set(option.key, option);
+    addOptions(option.children ?? []);
   }
-  return ret;
-})();
+}
+for (const section of CONFIG_SECTIONS) addOptions(section.options);
 
+/** Change events, one event type per option key. */
+const changeEvents = document.createDocumentFragment();
+
+/** @returns {Record<string, unknown>} The values the user has set. */
 function loadStoredConfig() {
   const storage = window.localStorage.getItem(CONFIG_KEY);
 
   if (storage === null) {
     console.info('Config not set; using defaults.');
-    return null;
+    return {};
   }
 
   try {
-    return JSON.parse(storage);
+    return JSON.parse(storage) ?? {};
   } catch (err) {
     console.warn('Error parsing stored config:', err);
-    return null;
+    return {};
   }
 }
 
-// Use defaultConfig as a prototype so writes to localConfig don't change it.
-let localConfig = loadStoredConfig() ?? Object.create(defaultConfig);
+const storedConfig = loadStoredConfig();
 
-function configExists(key) {
-  return configOptions.has(key);
+/** @param {string} key */
+function getOption(key) {
+  const option = configOptions.get(key);
+  if (!option) throw new Error('unknown config key: ' + key);
+  return option;
 }
 
-/** @returns {string[]} Every config key, in declaration order. */
-export function configKeys() {
-  return Array.from(configOptions.keys());
-}
-
-export function configGetDesc(key) {
-  if (!configExists(key)) {
-    throw new Error('tried to get desc for unknown config key: ' + key);
-  }
-
-  return configOptions.get(key).desc;
-}
-
-/** @returns {string} The one-sentence explanation shown under the label. */
-export function configGetHint(key) {
-  if (!configExists(key)) {
-    throw new Error('tried to get hint for unknown config key: ' + key);
-  }
-
-  return configOptions.get(key).hint ?? '';
-}
-
+/** @param {string} key */
 export function configRead(key) {
-  if (!configExists(key)) {
-    throw new Error('tried to read unknown config key: ' + key);
-  }
-
-  if (localConfig[key] === undefined) {
-    console.warn(
-      'Populating key',
-      key,
-      'with default value',
-      defaultConfig[key]
-    );
-
-    localConfig[key] = defaultConfig[key];
-  }
-
-  return localConfig[key];
+  const option = getOption(key);
+  return Object.hasOwn(storedConfig, key) ? storedConfig[key] : option.default;
 }
 
+/**
+ * @param {string} key
+ * @param {boolean} value
+ */
 export function configWrite(key, value) {
-  if (!configExists(key)) {
-    throw new Error('tried to write unknown config key: ' + key);
-  }
-
-  const oldValue =
-    localConfig[key] !== undefined ? localConfig[key] : defaultConfig[key];
+  const oldValue = configRead(key);
 
   console.info('Changing key', key, 'from', oldValue, 'to', value);
-  localConfig[key] = value;
-  window.localStorage[CONFIG_KEY] = JSON.stringify(localConfig);
+  storedConfig[key] = value;
+  window.localStorage[CONFIG_KEY] = JSON.stringify(storedConfig);
 
-  configFrags[key].dispatchEvent(
-    new CustomEvent('ytafConfigChange', {
-      detail: { key, newValue: value, oldValue }
-    })
-  );
+  changeEvents.dispatchEvent(new CustomEvent(key, { detail: value }));
 }
 
 /**
- * Add a listener for changes in the value of a specified config option
- * @param {string} key Config option to monitor
- * @param {(evt: Event) => void} callback Function to be called on change
+ * Calls `callback` with the new value whenever an option changes.
+ * @param {string} key
+ * @param {(newValue: boolean) => void} callback
  */
 export function configAddChangeListener(key, callback) {
-  const frag = configFrags[key];
-
-  frag.addEventListener('ytafConfigChange', callback);
-}
-
-/**
- * Remove a listener for changes in the value of a specified config option
- * @param {string} key Config option to monitor
- * @param {(evt: Event) => void} callback Function to be called on change
- */
-export function configRemoveChangeListener(key, callback) {
-  const frag = configFrags[key];
-
-  frag.removeEventListener('ytafConfigChange', callback);
+  getOption(key);
+  changeEvents.addEventListener(key, (evt) => {
+    callback(/** @type {CustomEvent<boolean>} */ (evt).detail);
+  });
 }

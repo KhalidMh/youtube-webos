@@ -27,28 +27,55 @@ function parseAllowedYouTubeURL(value, origin) {
 }
 
 /**
- * Creates a new URLSearchPrams with the contents of `a` and `b`
  * @param {URLSearchParams} a
  * @param {URLSearchParams} b
- * @returns {URLSearchParams}
  */
 function concatSearchParams(a, b) {
   return new URLSearchParams([...a.entries(), ...b.entries()]);
+}
+
+/**
+ * What the launch asks to open: a URL or query string, a voice intent object,
+ * or nothing.
+ *
+ * Our custom `target` param is used, since launches with `contentTarget` do
+ * not respect the `handlesRelaunch` appinfo option; an explicit
+ * `contentTarget` still takes precedence.
+ * @param {Record<string, unknown>} params webOS launch params
+ */
+export function getContentTarget(params) {
+  const { target, contentTarget = target } = params;
+  return contentTarget;
+}
+
+// `dialLaunch`/`pairingCode` mark a DIAL launch, `cc2` a Cast Connect one.
+const CAST_LAUNCH_PARAMS = ['dialLaunch', 'pairingCode', 'cc2'];
+
+/** @param {string} query A URL's query string, with or without the `?`. */
+export function hasCastParams(query) {
+  const params = new URLSearchParams(query);
+  return CAST_LAUNCH_PARAMS.some((key) => params.has(key));
+}
+
+/**
+ * Whether the launch comes from a phone casting to the TV.
+ * @param {Record<string, unknown>} params webOS launch params
+ */
+export function isCastLaunch(params) {
+  const contentTarget = getContentTarget(params);
+  if (typeof contentTarget !== 'string') return false;
+
+  const queryStart = contentTarget.indexOf('?');
+  return hasCastParams(
+    queryStart === -1 ? contentTarget : contentTarget.slice(queryStart + 1)
+  );
 }
 
 export function handleLaunch(params) {
   console.info('handleLaunch', params);
   let ytURL = getYTURL();
 
-  // We use our custom "target" param, since launches with "contentTarget"
-  // parameter do not respect "handlesRelaunch" appinfo option. We still
-  // fallback to "contentTarget" if our custom param is not specified.
-  //
-  let { target, contentTarget = target } = params;
-
-  /** TODO: Handle google assistant
-   * Sample: {contentTarget: "v=v=<ID>", storeCaller: "voice", subReason: "voiceAgent", voiceEngine: "googleAssistant"}
-   */
+  let contentTarget = getContentTarget(params);
 
   switch (typeof contentTarget) {
     case 'string': {
@@ -59,6 +86,7 @@ export function handleLaunch(params) {
       } else {
         // Out of app dial launch with second screen on home: { contentTarget: 'pairingCode=<UUID>&theme=cl&dialLaunch=watch' }
         console.info('Launching from partial contentTarget');
+        // Google Assistant: { contentTarget: 'v=v=<ID>', storeCaller: 'voice', subReason: 'voiceAgent', voiceEngine: 'googleAssistant' }
         if (contentTarget.indexOf('v=v=') === 0)
           contentTarget = contentTarget.substring(2);
 
@@ -97,64 +125,4 @@ export function handleLaunch(params) {
   }
 
   window.location.href = ytURL.toString();
-}
-
-/**
- * Wait for a child element to be added for which a predicate is true.
- *
- * When `observeAttributes` is false, the predicate is checked only when a node
- * is first added. If you want the predicate to run every time an attribute is
- * modified, set `observeAttributes` to true.
- * @template {Node} T
- * @param {Element} parent Root of tree to watch
- * @param {(node: Node) => node is T} predicate Function that checks whether its argument is the desired element
- * @param {boolean} observeAttributes Also run predicate on attribute changes
- * @param {AbortSignal=} abortSignal Signal that can be used to stop waiting
- * @return {Promise<T>} Matched element
- */
-export async function waitForChildAdd(
-  parent,
-  predicate,
-  observeAttributes,
-  abortSignal
-) {
-  return new Promise((resolve, reject) => {
-    const obs = new MutationObserver((mutations) => {
-      for (const mut of mutations) {
-        switch (mut.type) {
-          case 'attributes': {
-            if (predicate(mut.target)) {
-              obs.disconnect();
-              resolve(mut.target);
-              return;
-            }
-            break;
-          }
-          case 'childList': {
-            for (const node of mut.addedNodes) {
-              if (predicate(node)) {
-                obs.disconnect();
-                resolve(node);
-                return;
-              }
-            }
-            break;
-          }
-        }
-      }
-    });
-
-    if (abortSignal) {
-      abortSignal.addEventListener('abort', () => {
-        obs.disconnect();
-        reject(new Error('aborted'));
-      });
-    }
-
-    obs.observe(parent, {
-      subtree: true,
-      attributes: observeAttributes,
-      childList: true
-    });
-  });
 }

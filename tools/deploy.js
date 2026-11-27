@@ -8,5 +8,5 @@ process.exit(
     normalize('./node_modules/.bin/ares-install'),
     [normalize(`./youtube.leanback.v4_${pkgJson.version}_all.ipk`)],
     { stdio: 'inherit', shell: true }
-  ).status ?? 0
+  ).status ?? 1
 );

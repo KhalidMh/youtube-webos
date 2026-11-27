@@ -3,7 +3,7 @@
  * the entire screen, the screensaver can be kick in.
  */
 
-import { requireElement } from './player_api/helpers';
+import { requireElement } from './dom';
 
 function isPlayerHidden(video: HTMLVideoElement) {
   // Youtube uses display none sometimes along with a negative top to hide the HTMLVideoElement.
@@ -25,7 +25,6 @@ const playerCtrlObs = new MutationObserver((mutations, obs) => {
   if (!(video instanceof HTMLVideoElement)) throw new Error();
   const style = video.style;
 
-  // Not sure if there will be a race condition so just in case.
   if (isPlayerHidden(video)) return;
 
   const targetWidth = `${window.innerWidth}px`;

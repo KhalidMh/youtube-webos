@@ -1,19 +1,15 @@
 import { configRead } from './config';
 
-import { ResolveCommandRegistry, type ResolveCommandHook } from './app_api';
-
-const registry = await ResolveCommandRegistry.getInstance();
+import { getResolveCommandRegistry, type ResolveCommandHook } from './app_api';
 
 const hook: ResolveCommandHook = function (resolveCommand, payload, extra) {
-  if (!configRead('autoAccountSelect')) {
-    resolveCommand(payload, extra);
-    return;
-  }
+  if (!configRead('autoAccountSelect')) return resolveCommand(payload, extra);
 
-  const finalEndpoint = payload?.startAccountSelectorCommand // @ts-expect-error TS doesn't allow optional chaining on `unknown`. See: github.com/microsoft/TypeScript/issues/37700
-    ?.nextEndpoint as unknown;
+  const finalEndpoint = (
+    payload.startAccountSelectorCommand as { nextEndpoint?: unknown } | null
+  )?.nextEndpoint;
 
-  registry.dispatchCommand({
+  resolveCommand({
     onIdentityChanged: {
       identityActionContext: {
         nextEndpoint: finalEndpoint,
@@ -26,4 +22,7 @@ const hook: ResolveCommandHook = function (resolveCommand, payload, extra) {
   });
 };
 
-registry.setHook('startAccountSelectorCommand', hook);
+(await getResolveCommandRegistry()).setHook(
+  'startAccountSelectorCommand',
+  hook
+);

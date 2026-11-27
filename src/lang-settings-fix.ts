@@ -1,9 +1,6 @@
 // Adapted from https://github.com/reisxd/TizenTube/blob/522f83cc012d5b1c75181b651e084a3afa280323/mods/resolveCommand.js
 
-import {
-  ResolveCommandRegistry,
-  type ResolveCommandHook
-} from './app_api/index';
+import { getResolveCommandRegistry, type ResolveCommandHook } from './app_api';
 
 function getPrefsCookie() {
   const PREFIX = 'PREF=';
@@ -16,34 +13,16 @@ function getPrefsCookie() {
 }
 
 const hook: ResolveCommandHook = function (resolveCommand, payload, extra) {
-  const passthrough = () => {
-    console.warn(
-      `[lang-settings-fix] Passing through due to payload mismatch."`
-    );
-    return resolveCommand(payload, extra);
-  };
+  const settingDatas = (
+    payload.setClientSettingEndpoint as { settingDatas?: unknown } | null
+  )?.settingDatas;
+  const setting = Array.isArray(settingDatas)
+    ? settingDatas.find(
+        (data) => data?.clientSettingEnum?.item === 'I18N_LANGUAGE'
+      )
+    : undefined;
 
-  if (
-    !payload.setClientSettingEndpoint ||
-    typeof payload.setClientSettingEndpoint !== 'object'
-  )
-    return passthrough();
-
-  const setClientSettingEndpoint = payload.setClientSettingEndpoint as Record<
-    string,
-    unknown
-  >;
-
-  if (!Array.isArray(setClientSettingEndpoint.settingDatas))
-    return passthrough();
-
-  const idx = setClientSettingEndpoint.settingDatas.findIndex(
-    (setting) => setting.clientSettingEnum?.item === 'I18N_LANGUAGE'
-  );
-
-  if (idx === -1) return resolveCommand(payload, extra);
-
-  const setting = setClientSettingEndpoint.settingDatas[idx];
+  if (!setting) return resolveCommand(payload, extra);
 
   const lang = setting.stringValue;
   const date = new Date();
@@ -62,5 +41,4 @@ const hook: ResolveCommandHook = function (resolveCommand, payload, extra) {
   return true;
 };
 
-const registry = await ResolveCommandRegistry.getInstance();
-registry.setHook('setClientSettingEndpoint', hook);
+(await getResolveCommandRegistry()).setHook('setClientSettingEndpoint', hook);

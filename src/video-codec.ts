@@ -1,6 +1,6 @@
 import { configRead } from './config';
-import { getPlayerManager, PlayerMode } from './player_api';
-import type { EventMapOf, PlayerManager, VideoQualityData } from './player_api';
+import { addResponseFilter } from './hooks/json-parse';
+import type { VideoQualityData } from './player_api/yt-api';
 
 const VP09_CODEC = 'vp09';
 const AV1_CODEC = 'av01';
@@ -29,22 +29,15 @@ const VP9_FORMAT_IDS = new Set([
 
 interface StreamingFormat {
   mimeType?: string;
-  [key: string]: unknown;
 }
 
 interface StreamingData {
   formats?: StreamingFormat[];
   adaptiveFormats?: StreamingFormat[];
-  [key: string]: unknown;
 }
 
 interface PlayerResponse {
   streamingData?: StreamingData;
-  [key: string]: unknown;
-}
-
-function shouldForce() {
-  return configRead('forceVp9Codec');
 }
 
 function isAv1MimeType(mimeType: string | undefined) {
@@ -55,31 +48,24 @@ function isVp09MimeType(mimeType: string | undefined) {
   return mimeType?.includes(VP09_CODEC) ?? false;
 }
 
-export function isVp9FormatId(formatId: string | undefined) {
-  return formatId !== undefined && VP9_FORMAT_IDS.has(formatId);
-}
-
-export function getPreferredVp9FormatId(
-  qualityData: VideoQualityData[] | undefined
-) {
-  return qualityData?.find((format) => {
-    return format.isPlayable && isVp9FormatId(format.formatId);
-  })?.formatId;
+export function getPreferredVp9FormatId(qualityData: VideoQualityData[]) {
+  return qualityData.find(
+    (format) =>
+      format.isPlayable &&
+      format.formatId !== undefined &&
+      VP9_FORMAT_IDS.has(format.formatId)
+  )?.formatId;
 }
 
 function isVideoFormat(format: StreamingFormat) {
   return format.mimeType?.startsWith('video/') ?? false;
 }
 
-function isVp09Format(format: StreamingFormat) {
-  return isVp09MimeType(format.mimeType);
-}
-
 function filterFormats(formats: StreamingFormat[] | undefined) {
   if (!formats) return 0;
 
   const hasVp09Video = formats.some(
-    (format) => isVideoFormat(format) && isVp09Format(format)
+    (format) => isVideoFormat(format) && isVp09MimeType(format.mimeType)
   );
   if (!hasVp09Video) return 0;
 
@@ -88,19 +74,17 @@ function filterFormats(formats: StreamingFormat[] | undefined) {
     0,
     formats.length,
     ...formats.filter(
-      (format) => !isVideoFormat(format) || isVp09Format(format)
+      (format) => !isVideoFormat(format) || isVp09MimeType(format.mimeType)
     )
   );
 
   return originalLength - formats.length;
 }
 
-/** @param parsed Any `JSON.parse` result, including `null` and primitives. */
-function forceVp09(parsed: unknown) {
-  if (!shouldForce()) return;
-  if (parsed === null || typeof parsed !== 'object') return;
+addResponseFilter('video-codec', (response) => {
+  if (!configRead('forceVp9Codec')) return;
 
-  const streamingData = (parsed as PlayerResponse).streamingData;
+  const streamingData = (response as PlayerResponse).streamingData;
   if (!streamingData) return;
 
   const removedFormats = filterFormats(streamingData.formats);
@@ -112,20 +96,11 @@ function forceVp09(parsed: unknown) {
       `[video-codec] Filtered ${removedTotal} non-VP09 video formats`
     );
   }
-}
-
-const origParse = JSON.parse;
-JSON.parse = function (text, reviver) {
-  const r = origParse(text, reviver);
-
-  forceVp09(r);
-
-  return r;
-};
+});
 
 const originalCanPlayType = HTMLMediaElement.prototype.canPlayType;
 HTMLMediaElement.prototype.canPlayType = function (mimeType) {
-  if (shouldForce()) {
+  if (configRead('forceVp9Codec')) {
     if (isAv1MimeType(mimeType)) return '';
     if (isVp09MimeType(mimeType)) return 'probably';
   }
@@ -136,7 +111,7 @@ HTMLMediaElement.prototype.canPlayType = function (mimeType) {
 const originalIsTypeSupported = window.MediaSource?.isTypeSupported;
 if (originalIsTypeSupported) {
   window.MediaSource.isTypeSupported = function (mimeType) {
-    if (shouldForce()) {
+    if (configRead('forceVp9Codec')) {
       if (isAv1MimeType(mimeType)) return false;
       if (isVp09MimeType(mimeType)) return true;
     }
@@ -149,7 +124,7 @@ const originalDecodingInfo = navigator.mediaCapabilities?.decodingInfo;
 if (originalDecodingInfo) {
   navigator.mediaCapabilities.decodingInfo = function (configuration) {
     const mimeType = configuration.video?.contentType;
-    if (shouldForce() && isAv1MimeType(mimeType)) {
+    if (configRead('forceVp9Codec') && isAv1MimeType(mimeType)) {
       return Promise.resolve({
         supported: false,
         smooth: false,
@@ -161,33 +136,3 @@ if (originalDecodingInfo) {
     return originalDecodingInfo.call(this, configuration);
   };
 }
-
-type EventMap = EventMapOf<PlayerManager>;
-
-function setVp09PlaybackFormat(this: PlayerManager, _: unknown) {
-  if (this.playerMode === PlayerMode.PREVIEW) return;
-
-  this.removeEventListener('playbackStart', setVp09PlaybackFormat);
-
-  const formatId = getPreferredVp9FormatId(
-    this.player.getAvailableQualityData()
-  );
-  if (!formatId) {
-    console.warn('[video-codec] No playable VP09 formatId available');
-    return;
-  }
-
-  console.info(`[video-codec] Selecting VP09 formatId ${formatId}`);
-  this.player.setPlaybackQualityRange('highres', 'highres', formatId);
-}
-
-function handleNewVideo(this: PlayerManager, _: EventMap['newVideo']) {
-  if (!shouldForce()) return;
-
-  this.removeEventListener('playbackStart', setVp09PlaybackFormat);
-  this.addEventListener('playbackStart', setVp09PlaybackFormat);
-}
-
-void getPlayerManager().then((playerManager) => {
-  playerManager.addEventListener('newVideo', handleNewVideo);
-});

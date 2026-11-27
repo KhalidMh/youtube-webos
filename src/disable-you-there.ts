@@ -8,8 +8,7 @@
  */
 
 import { configRead } from './config';
-
-type JSONReviver = Parameters<typeof JSON.parse>[1];
+import { addResponseFilter } from './hooks/json-parse';
 
 function pruneYouThere(obj: unknown) {
   if (obj === null || typeof obj !== 'object') return;
@@ -25,23 +24,13 @@ function pruneYouThere(obj: unknown) {
   }
 }
 
-const originalParse = JSON.parse;
+addResponseFilter('you-there', (response) => {
+  if (!configRead('disableYouThere')) return;
 
-function jsonParse(str: string, reviver?: JSONReviver) {
-  const res = originalParse(str, reviver) as unknown;
-
-  if (!configRead('disableYouThere')) return res;
-
-  pruneYouThere(res);
-  if (res !== null && typeof res === 'object') {
-    // Player response can also be nested inside a "next"/watch response.
-    pruneYouThere((res as { playerResponse?: unknown }).playerResponse);
-  }
-
-  return res;
-}
-
-JSON.parse = jsonParse;
+  pruneYouThere(response);
+  // Player response can also be nested inside a "next"/watch response.
+  pruneYouThere((response as { playerResponse?: unknown }).playerResponse);
+});
 
 const w = window as unknown as { _lact?: number };
 

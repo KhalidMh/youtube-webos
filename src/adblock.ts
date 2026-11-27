@@ -1,13 +1,15 @@
+/**
+ * The ads in responses are removed by `response-filters.js`. This asks for
+ * none in the first place: player requests get `isInlinePlaybackNoAd`.
+ */
+
+import { configRead } from './config';
+
 function isPrimitive(
   value: unknown
 ): value is string | number | boolean | null | undefined | symbol | bigint {
   return Object(value) !== value;
 }
-
-const originalStringify = JSON.stringify;
-
-type FunctionReplacer = (this: any, key: string, value: any) => any;
-type WhitelistReplacer = (string | number)[] | null;
 
 /**
  * Returns a copy of `value` with `isInlinePlaybackNoAd` set, or `value` itself
@@ -19,15 +21,15 @@ type WhitelistReplacer = (string | number)[] | null;
  * would break the player request and leave the video stuck loading.
  */
 function withNoAdContext(value: object): object {
-  // @ts-expect-error TS doesn't allow optional chaining on `unknown`. See: https://github.com/microsoft/TypeScript/issues/37700
-  const playbackContext = value?.playbackContext as unknown;
+  const playbackContext = (value as { playbackContext?: unknown })
+    .playbackContext;
   if (isPrimitive(playbackContext)) return value;
 
   const ctx = (playbackContext as Record<string, unknown>)
     .contentPlaybackContext;
   if (isPrimitive(ctx)) return value;
 
-  console.info(`[JSON.stringify] Set isInlinePlaybackNoAd`);
+  console.info('[adblock] Set isInlinePlaybackNoAd');
 
   return {
     ...value,
@@ -38,23 +40,23 @@ function withNoAdContext(value: object): object {
   };
 }
 
-function stringify(
+const originalStringify = JSON.stringify;
+
+JSON.stringify = function (
   value: unknown,
-  replacer?: FunctionReplacer | WhitelistReplacer,
+  replacer?:
+    | ((this: any, key: string, value: any) => any)
+    | (string | number)[]
+    | null,
   space?: string | number
 ): string {
-  if (!isPrimitive(value)) {
-    // TODO: add below to a dump-level logger
-    // console.debug('JSON.stringify', value, replacer, space);
-
+  if (!isPrimitive(value) && configRead('enableAdBlock')) {
     try {
       value = withNoAdContext(value);
     } catch (err) {
-      console.warn('[JSON.stringify] Failed to patch playback context', err);
+      console.warn('[adblock] Failed to patch playback context', err);
     }
   }
 
-  return originalStringify(value, replacer as any, space);
-}
-
-JSON.stringify = stringify;
+  return originalStringify(value, replacer as never, space);
+};
